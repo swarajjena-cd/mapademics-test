@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Explorer – Mapademics POC</title>
+  <style>
+    :root {
+      --primary: #4f46e5; --primary-light: #818cf8; --primary-bg: #eef2ff;
+      --success: #059669; --success-bg: #ecfdf5;
+      --warning: #d97706; --warning-bg: #fffbeb;
+      --danger: #dc2626; --danger-bg: #fef2f2;
+      --info: #0284c7; --info-bg: #e0f2fe;
+      --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+      --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+      --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937; --gray-900: #111827;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-50); color: var(--gray-800); line-height: 1.6; }
+
+    /* Header & Nav */
+    .header { background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); color: white; padding: 16px 32px; display: flex; align-items: center; gap: 16px; box-shadow: var(--shadow-lg); }
+    .header-icon { width: 40px; height: 40px; background: rgba(255,255,255,.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .nav-link { color: rgba(255,255,255,.7); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; transition: all .15s; }
+    .nav-link:hover, .nav-link.active { color: white; background: rgba(255,255,255,.15); }
+    .badge { background: rgba(255,255,255,.2); padding: 4px 12px; border-radius: 16px; font-size: 11px; font-weight: 600; }
+    .logout-btn { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.2); color: white; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
+
+    /* Login overlay */
+    .login-overlay { position: fixed; inset: 0; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #2563eb 100%); display: flex; align-items: center; justify-content: center; z-index: 9999; transition: opacity .4s, visibility .4s; }
+    .login-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .login-card { background: white; border-radius: 20px; padding: 48px 40px; width: 420px; max-width: 90vw; box-shadow: 0 25px 50px rgba(0,0,0,.25); text-align: center; }
+    .login-card .login-icon { width: 72px; height: 72px; background: var(--primary-bg); border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 36px; margin-bottom: 20px; }
+    .login-card h2 { font-size: 22px; font-weight: 800; color: var(--gray-900); margin-bottom: 6px; }
+    .login-card p { font-size: 14px; color: var(--gray-500); margin-bottom: 28px; }
+    .login-card input { width: 100%; padding: 14px 18px; border: 2px solid var(--gray-200); border-radius: 12px; font-size: 16px; text-align: center; letter-spacing: 1px; margin-bottom: 16px; }
+    .login-card input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(79,70,229,.15); }
+    .login-card .login-btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; }
+    .login-card .login-btn:hover { background: #4338ca; }
+    .login-card .login-btn:disabled { background: var(--gray-300); cursor: not-allowed; }
+    .login-error { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 20px; }
+
+    /* Layout */
+    .layout { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 60px); }
+
+    /* Sidebar */
+    .sidebar { background: white; border-right: 1px solid var(--gray-200); padding: 24px; overflow-y: auto; max-height: calc(100vh - 60px); position: sticky; top: 0; }
+    .sidebar h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--gray-500); margin-bottom: 12px; margin-top: 20px; display: flex; align-items: center; gap: 8px; }
+    .sidebar h3:first-child { margin-top: 0; }
+
+    .filter-group { margin-bottom: 16px; }
+    .filter-group label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px; }
+    .filter-group select, .filter-group input { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 13px; color: var(--gray-800); background: white; }
+    .filter-group select:focus, .filter-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
+    .filter-group .help { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+
+    .chip-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .chip { padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--gray-200); background: white; color: var(--gray-600); transition: all .15s; }
+    .chip:hover { border-color: var(--primary); color: var(--primary); }
+    .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .divider { border: none; border-top: 1px solid var(--gray-200); margin: 20px 0; }
+
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
+    .btn-primary { background: var(--primary); color: white; width: 100%; justify-content: center; }
+    .btn-primary:hover { background: #4338ca; }
+    .btn-primary:disabled { background: var(--gray-300); cursor: not-allowed; }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-outline { background: white; color: var(--gray-600); border: 1px solid var(--gray-300); }
+    .btn-outline:hover { background: var(--gray-50); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-info { background: var(--info); color: white; }
+
+    .filter-count { background: var(--primary-bg); color: var(--primary); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-left: auto; }
+
+    /* Main content */
+    .main { padding: 24px; overflow-y: auto; }
+
+    .section-title { font-size: 14px; font-weight: 700; color: var(--gray-700); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .section-title .count { background: var(--gray-100); padding: 2px 10px; border-radius: 10px; font-size: 12px; color: var(--gray-500); }
+
+    /* Program cards */
+    .program-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .program-card { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); cursor: pointer; transition: all .15s; position: relative; }
+    .program-card:hover { border-color: var(--primary-light); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .program-card.selected { border-color: var(--primary); border-width: 2px; background: var(--primary-bg); }
+    .program-card .pc-name { font-size: 14px; font-weight: 700; color: var(--gray-800); margin-bottom: 4px; }
+    .program-card .pc-meta { font-size: 11px; color: var(--gray-500); display: flex; flex-wrap: wrap; gap: 8px; }
+    .program-card .pc-cip { display: inline-block; background: var(--primary-bg); color: var(--primary); padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 600; font-family: monospace; margin-top: 6px; }
+    .program-card .pc-check { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--gray-300); display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .program-card.selected .pc-check { background: var(--primary); border-color: var(--primary); color: white; }
+
+    /* Stats */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+    .stat-card .s-label { font-size: 11px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .stat-card .s-value { font-size: 24px; font-weight: 800; color: var(--gray-900); }
+    .stat-card .s-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+    .stat-card.highlight { border-color: var(--primary-light); border-width: 2px; }
+
+    /* Occupation cards */
+    .occ-card { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius); margin-bottom: 16px; box-shadow: var(--shadow); overflow: hidden; }
+    .occ-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; }
+    .occ-header h4 { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+    .occ-body { padding: 16px 20px; }
+    .occ-desc { font-size: 13px; color: var(--gray-600); margin-bottom: 12px; }
+    .alt-titles { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .alt-title { background: var(--gray-100); padding: 3px 10px; border-radius: 12px; font-size: 11px; color: var(--gray-600); }
+    .tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .tag-soc { background: var(--info-bg); color: var(--info); font-family: monospace; }
+    .tag-demand { background: var(--success-bg); color: var(--success); }
+
+    /* Skills */
+    .skills-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .skill-col h5 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .skill-col.core h5 { color: var(--primary); }
+    .skill-col.relevant h5 { color: var(--success); }
+    .skill-col.transferable h5 { color: var(--warning); }
+    .skill-pill { padding: 8px 12px; border-radius: 8px; margin-bottom: 4px; font-size: 12px; }
+    .skill-col.core .skill-pill { background: var(--primary-bg); color: var(--primary); }
+    .skill-col.relevant .skill-pill { background: var(--success-bg); color: var(--success); }
+    .skill-col.transferable .skill-pill { background: var(--warning-bg); color: var(--warning); }
+    .skill-pill strong { display: block; }
+    .skill-pill small { opacity: .7; font-size: 11px; }
+
+    /* Regional table */
+    .region-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; margin-bottom: 20px; }
+    .region-table th { background: var(--gray-50); padding: 8px 12px; text-align: left; font-weight: 600; color: var(--gray-600); border-bottom: 2px solid var(--gray-200); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+    .region-table td { padding: 8px 12px; border-bottom: 1px solid var(--gray-100); color: var(--gray-700); }
+    .region-table tr:hover td { background: var(--gray-50); }
+
+    /* Percentile bar */
+    .pbar { height: 6px; background: var(--gray-200); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+    .pbar-fill { height: 100%; border-radius: 3px; }
+    .pbar-fill.high { background: var(--success); }
+    .pbar-fill.med { background: var(--warning); }
+    .pbar-fill.low { background: var(--danger); }
+
+    /* Salary bar */
+    .sal-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .sal-label { width: 150px; font-size: 12px; font-weight: 600; color: var(--gray-700); text-align: right; flex-shrink: 0; }
+    .sal-track { flex: 1; height: 24px; background: var(--gray-100); border-radius: 6px; overflow: hidden; }
+    .sal-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 10px; font-size: 12px; font-weight: 700; color: white; min-width: 70px; }
+    .sal-fill.c1 { background: linear-gradient(90deg, #4f46e5, #818cf8); }
+    .sal-fill.c2 { background: linear-gradient(90deg, #059669, #34d399); }
+    .sal-fill.c3 { background: linear-gradient(90deg, #d97706, #fbbf24); }
+
+    /* Empty & loading */
+    .empty { text-align: center; padding: 60px 32px; color: var(--gray-500); }
+    .empty .e-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty h3 { font-size: 16px; color: var(--gray-700); margin-bottom: 6px; }
+    .loading { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 60px; color: var(--gray-500); font-size: 14px; }
+    .spinner { width: 20px; height: 20px; border: 3px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Collapsible */
+    .collapse-toggle { width: 100%; padding: 12px 16px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--gray-600); margin-bottom: 8px; }
+    .collapse-content { display: none; }
+    .collapse-content.open { display: block; }
+    .collapse-content pre { background: var(--gray-900); color: #e2e8f0; padding: 14px; border-radius: 8px; overflow-x: auto; font-size: 11px; line-height: 1.5; }
+
+    /* Mode toggle */
+    .mode-toggle { display: flex; background: var(--gray-100); border-radius: 8px; padding: 3px; margin-bottom: 16px; }
+    .mode-btn { flex: 1; padding: 8px; text-align: center; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--gray-500); transition: all .15s; border: none; background: none; }
+    .mode-btn.active { background: white; color: var(--primary); box-shadow: var(--shadow); }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { max-height: none; position: static; }
+      .skills-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Login overlay -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+      <div class="login-icon">🔐</div>
+      <h2>Coursedog × Mapademics</h2>
+      <p>Enter the access code to explore labor market intelligence data</p>
+      <form onsubmit="handleLogin(event)">
+        <input type="password" id="accessCodeInput" placeholder="Enter access code…" autocomplete="off" autofocus>
+        <button type="submit" class="login-btn" id="loginBtn">Unlock Dashboard</button>
+      </form>
+      <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
+
+  <div class="header">
+    <div class="header-icon">🔬</div>
+    <h1>Advanced Explorer</h1>
+    <div class="header-right">
+      <a href="/" class="nav-link">📊 Dashboard</a>
+      <a href="/advanced.html" class="nav-link active">🔬 Advanced</a>
+      <span class="badge">🧪 Sandbox</span>
+      <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- ═══ Sidebar Filters ═══ -->
+    <div class="sidebar" id="sidebar">
+      <h3>🔍 Query Mode</h3>
+      <div class="mode-toggle">
+        <button class="mode-btn active" onclick="setMode('cip')">By CIP Code</button>
+        <button class="mode-btn" onclick="setMode('soc')">By SOC Code</button>
+      </div>
+
+      <!-- CIP mode filters -->
+      <div id="cipFilters">
+        <h3>🏫 School & Program</h3>
+        <div class="filter-group">
+          <label>School</label>
+          <select id="schoolSelect" onchange="onSchoolChange()">
+            <option value="">Select a school…</option>
+          </select>
+        </div>
+
+        <div id="advancedFilters" style="display:none">
+          <div class="filter-group">
+            <label>College / Department</label>
+            <select id="collegeFilter" onchange="applyFilters()">
+              <option value="">All colleges</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>Degree Type</label>
+            <select id="degreeFilter" onchange="applyFilters()">
+              <option value="">All degrees</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>Program Type</label>
+            <div class="chip-container" id="typeChips"></div>
+          </div>
+
+          <div class="filter-group">
+            <label>Search Programs</label>
+            <input type="text" id="programSearch" placeholder="Type to search…" oninput="applyFilters()">
+          </div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; margin: 8px 0;">
+            <span style="font-size:12px; color:var(--gray-500);">
+              Showing <strong id="filteredCount">0</strong> programs
+            </span>
+            <button class="btn btn-sm btn-outline" onclick="clearFilters()">Clear filters</button>
+          </div>
+
+          <div class="filter-group">
+            <label>Selected Programs <span class="filter-count" id="selectedCount">0</span></label>
+            <div id="selectedChips" class="chip-container"></div>
+            <div class="help">Click programs in the grid to select (max 5). CIP codes are sent to Mapademics.</div>
+          </div>
+        </div>
+
+        <hr class="divider">
+        <div class="filter-group">
+          <label>Or enter CIP code(s) directly</label>
+          <input type="text" id="directCipInput" placeholder="e.g. 11.0701, 27.0501">
+          <div class="help">Comma-separated. Sandbox supports: 11.0101, 11.0701, 27.0501</div>
+        </div>
+      </div>
+
+      <!-- SOC mode filters -->
+      <div id="socFilters" style="display:none">
+        <h3>💼 SOC Code</h3>
+        <div class="filter-group">
+          <label>Enter SOC code(s)</label>
+          <input type="text" id="directSocInput" placeholder="e.g. 15-1252, 15-2051">
+          <div class="help">Comma-separated. Sandbox supports: 15-1252, 15-2051</div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <h3>📍 Region</h3>
+      <div class="filter-group">
+        <label>Primary Region</label>
+        <select id="regionSelect"><option value="national-99">Loading…</option></select>
+      </div>
+      <div class="filter-group">
+        <label>
+          <input type="checkbox" id="compareRegions" checked> Compare across all regions
+        </label>
+      </div>
+
+      <hr class="divider">
+      <button class="btn btn-primary" id="fetchBtn" onclick="fetchData()" disabled>
+        🚀 Fetch Labor Market Data
+      </button>
+    </div>
+
+    <!-- ═══ Main Content ═══ -->
+    <div class="main" id="mainContent">
+      <div class="empty" id="emptyState">
+        <div class="e-icon">🔬</div>
+        <h3>Advanced LMI Explorer</h3>
+        <p>Use the filters on the left to search by CIP code, SOC code, program type, degree, college, and region.<br>Select programs from the grid or enter codes directly.</p>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ─── State ─────────────────────────
+let authToken = sessionStorage.getItem('mapademics_token') || ''
+let mode = 'cip' // 'cip' or 'soc'
+let schools = [], allPrograms = [], filteredPrograms = [], selectedPrograms = []
+let allRegions = [], skillsLibrary = null, schoolFilters = null
+
+// ─── Auth ──────────────────────────
+function authHeaders() { return { 'X-Access-Token': authToken } }
+function authFetch(url, opts = {}) { opts.headers = { ...(opts.headers || {}), ...authHeaders() }; return fetch(url, opts) }
+
+async function handleLogin(e) {
+  e.preventDefault()
+  const code = document.getElementById('accessCodeInput').value
+  const errorDiv = document.getElementById('loginError')
+  const btn = document.getElementById('loginBtn')
+  errorDiv.textContent = ''; btn.disabled = true; btn.textContent = 'Verifying…'
+  try {
+    const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) })
+    const data = await res.json()
+    if (!res.ok) { errorDiv.textContent = data.error || 'Invalid'; btn.disabled = false; btn.textContent = 'Unlock Dashboard'; return }
+    authToken = data.token; sessionStorage.setItem('mapademics_token', authToken)
+    document.getElementById('loginOverlay').classList.add('hidden')
+    loadApp()
+  } catch { errorDiv.textContent = 'Connection error.'; btn.disabled = false; btn.textContent = 'Unlock Dashboard' }
+}
+
+function logout() { authToken = ''; sessionStorage.removeItem('mapademics_token'); document.getElementById('loginOverlay').classList.remove('hidden') }
+
+// ─── Init ──────────────────────────
+async function init() {
+  if (authToken) {
+    try {
+      const res = await fetch('/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Token': authToken } })
+      const data = await res.json()
+      if (data.valid) { document.getElementById('loginOverlay').classList.add('hidden'); loadApp(); return }
+    } catch {}
+    authToken = ''; sessionStorage.removeItem('mapademics_token')
+  }
+}
+
+async function loadApp() {
+  const [schoolsRes, regionsRes, skillsRes] = await Promise.all([
+    authFetch('/api/schools'), authFetch('/api/lmi/regions'), authFetch('/api/skills-library/tree')
+  ])
+  schools = await schoolsRes.json()
+  allRegions = (await regionsRes.json()).data || []
+  skillsLibrary = (await skillsRes.json()).data || null
+
+  // Populate schools
+  const sel = document.getElementById('schoolSelect')
+  sel.innerHTML = '<option value="">Select a school…</option>'
+  schools.forEach(s => { const o = document.createElement('option'); o.value = s.id; o.textContent = s.label; sel.appendChild(o) })
+
+  // Populate regions
+  populateRegions()
+  updateFetchBtn()
+}
+
+function populateRegions() {
+  const sel = document.getElementById('regionSelect')
+  sel.innerHTML = ''
+  const groups = { national: '🇺🇸 National', state: '🏛️ States', msa: '🏙️ Metro Areas' }
+  for (const [type, label] of Object.entries(groups)) {
+    const items = allRegions.filter(r => r.type === type)
+    if (!items.length) continue
+    const grp = document.createElement('optgroup'); grp.label = label
+    items.forEach(r => { const o = document.createElement('option'); o.value = `${r.type}-${r.code}`; o.textContent = r.label; grp.appendChild(o) })
+    sel.appendChild(grp)
+  }
+}
+
+// ─── Mode Toggle ───────────────────
+function setMode(m) {
+  mode = m
+  document.querySelectorAll('.mode-btn').forEach((b, i) => b.classList.toggle('active', (i === 0 && m === 'cip') || (i === 1 && m === 'soc')))
+  document.getElementById('cipFilters').style.display = m === 'cip' ? 'block' : 'none'
+  document.getElementById('socFilters').style.display = m === 'soc' ? 'block' : 'none'
+  updateFetchBtn()
+}
+
+// ─── School Change ─────────────────
+async function onSchoolChange() {
+  const schoolId = document.getElementById('schoolSelect').value
+  const adv = document.getElementById('advancedFilters')
+  selectedPrograms = []; allPrograms = []; filteredPrograms = []
+
+  if (!schoolId) { adv.style.display = 'none'; updateFetchBtn(); return }
+  adv.style.display = 'block'
+
+  // Load programs + filters in parallel
+  const [progRes, filterRes] = await Promise.all([
+    authFetch(`/api/schools/${schoolId}/programs`),
+    authFetch(`/api/schools/${schoolId}/filters`),
+  ])
+  const progData = await progRes.json()
+  schoolFilters = await filterRes.json()
+  allPrograms = progData.programs || []
+
+  // Populate college dropdown
+  const collegeSel = document.getElementById('collegeFilter')
+  collegeSel.innerHTML = '<option value="">All colleges</option>'
+  schoolFilters.colleges.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; collegeSel.appendChild(o) })
+
+  // Populate degree dropdown
+  const degreeSel = document.getElementById('degreeFilter')
+  degreeSel.innerHTML = '<option value="">All degrees</option>'
+  schoolFilters.degreeDesignations.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; degreeSel.appendChild(o) })
+
+  // Populate type chips
+  const typeContainer = document.getElementById('typeChips')
+  typeContainer.innerHTML = ''
+  schoolFilters.types.forEach(t => {
+    const chip = document.createElement('button')
+    chip.className = 'chip'; chip.textContent = t; chip.dataset.value = t
+    chip.onclick = () => { chip.classList.toggle('active'); applyFilters() }
+    typeContainer.appendChild(chip)
+  })
+
+  applyFilters()
+}
+
+// ─── Filter Programs ───────────────
+function applyFilters() {
+  const college = document.getElementById('collegeFilter').value
+  const degree = document.getElementById('degreeFilter').value
+  const search = document.getElementById('programSearch').value.toLowerCase()
+  const activeTypes = [...document.querySelectorAll('#typeChips .chip.active')].map(c => c.dataset.value)
+
+  filteredPrograms = allPrograms.filter(p => {
+    if (college && p.college !== college) return false
+    if (degree && p.degreeDesignation !== degree) return false
+    if (activeTypes.length && !activeTypes.includes(p.type)) return false
+    if (search) {
+      const hay = `${p.longName || ''} ${p.name || ''} ${p.code || ''} ${p.cipCode || ''}`.toLowerCase()
+      if (!hay.includes(search)) return false
+    }
+    return true
+  })
+
+  document.getElementById('filteredCount').textContent = filteredPrograms.length
+  renderProgramGrid()
+  updateFetchBtn()
+}
+
+function clearFilters() {
+  document.getElementById('collegeFilter').value = ''
+  document.getElementById('degreeFilter').value = ''
+  document.getElementById('programSearch').value = ''
+  document.querySelectorAll('#typeChips .chip').forEach(c => c.classList.remove('active'))
+  applyFilters()
+}
+
+// ─── Program Grid ──────────────────
+function renderProgramGrid() {
+  const main = document.getElementById('mainContent')
+  const sandboxCips = ['11.0101', '11.0701', '27.0501']
+
+  let html = `<div class="section-title">📋 Programs <span class="count">${filteredPrograms.length}</span></div>`
+  html += `<div class="program-grid">`
+
+  filteredPrograms.slice(0, 100).forEach(p => {
+    const isSel = selectedPrograms.some(s => s.code === p.code)
+    const isSandbox = sandboxCips.includes(p.cipCode)
+    html += `
+      <div class="program-card ${isSel ? 'selected' : ''}" onclick="toggleProgram('${p.code}')" style="${isSandbox ? '' : 'opacity:.7'}">
+        <div class="pc-check">${isSel ? '✓' : ''}</div>
+        <div class="pc-name">${p.longName || p.name || p.code}</div>
+        <div class="pc-meta">
+          ${p.degreeDesignation ? `<span>🎓 ${p.degreeDesignation}</span>` : ''}
+          ${p.type ? `<span>📋 ${p.type}</span>` : ''}
+          ${p.college ? `<span>🏛️ ${p.college}</span>` : ''}
+        </div>
+        <span class="pc-cip">${isSandbox ? '✅' : '⚠️'} CIP: ${p.cipCode}</span>
+      </div>
+    `
+  })
+
+  if (filteredPrograms.length > 100) html += `<div style="padding:20px;font-size:13px;color:var(--gray-400)">Showing 100 of ${filteredPrograms.length}. Use filters to narrow down.</div>`
+  html += `</div>`
+
+  main.innerHTML = html
+  renderSelectedChips()
+}
+
+function toggleProgram(code) {
+  const idx = selectedPrograms.findIndex(s => s.code === code)
+  if (idx >= 0) {
+    selectedPrograms.splice(idx, 1)
+  } else {
+    if (selectedPrograms.length >= 5) return alert('Max 5 programs. Deselect one first.')
+    const p = allPrograms.find(p => p.code === code)
+    if (p) selectedPrograms.push(p)
+  }
+  renderProgramGrid()
+  updateFetchBtn()
+}
+
+function renderSelectedChips() {
+  const container = document.getElementById('selectedChips')
+  document.getElementById('selectedCount').textContent = selectedPrograms.length
+  container.innerHTML = selectedPrograms.map(p =>
+    `<span class="chip active" onclick="toggleProgram('${p.code}')">${p.longName || p.name} (${p.cipCode}) ×</span>`
+  ).join('')
+}
+
+function updateFetchBtn() {
+  const btn = document.getElementById('fetchBtn')
+  if (mode === 'soc') {
+    btn.disabled = !document.getElementById('directSocInput').value.trim()
+    btn.textContent = '🚀 Fetch by SOC Code'
+  } else {
+    const directCip = document.getElementById('directCipInput').value.trim()
+    btn.disabled = !selectedPrograms.length && !directCip
+    btn.textContent = selectedPrograms.length ? `🚀 Fetch Data for ${selectedPrograms.length} Program(s)` : directCip ? '🚀 Fetch by CIP Code' : '🚀 Select Programs or Enter CIP'
+  }
+}
+
+// Listen for direct input changes
+document.getElementById('directCipInput')?.addEventListener('input', updateFetchBtn)
+document.getElementById('directSocInput')?.addEventListener('input', updateFetchBtn)
+
+// ─── Fetch Data ────────────────────
+async function fetchData() {
+  const main = document.getElementById('mainContent')
+  document.getElementById('emptyState')?.remove()
+  main.innerHTML = '<div class="loading"><div class="spinner"></div>Fetching data from Mapademics…</div>'
+
+  const regionVal = document.getElementById('regionSelect').value
+  const { regionType, region } = parseRegion(regionVal)
+  const compareAll = document.getElementById('compareRegions').checked
+
+  try {
+    if (mode === 'soc') {
+      const socCodes = document.getElementById('directSocInput').value.split(',').map(s => s.trim()).filter(Boolean)
+      await fetchBySoc(socCodes, regionType, region, compareAll)
+    } else {
+      let cipCodes
+      const directCip = document.getElementById('directCipInput').value.trim()
+      if (directCip) {
+        cipCodes = directCip.split(',').map(s => s.trim()).filter(Boolean)
+      } else {
+        cipCodes = [...new Set(selectedPrograms.map(p => p.cipCode))]
+      }
+      await fetchByCip(cipCodes, regionType, region, compareAll)
+    }
+  } catch (err) {
+    main.innerHTML = `<div style="padding:20px;color:var(--danger)">❌ Error: ${err.message}</div>`
+  }
+}
+
+async function fetchByCip(cipCodes, regionType, region, compareAll) {
+  const fetches = [
+    authFetch('/api/lmi/by-cip', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cipCodes, regionType, region, includeSkills: true })
+    })
+  ]
+  if (compareAll) {
+    fetches.push(authFetch('/api/lmi/compare-regions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cipCodes, regions: allRegions.map(r => ({ regionType: r.type, region: r.code !== '99' ? r.code : undefined })) })
+    }))
+  }
+
+  const results = await Promise.all(fetches)
+  const lmiData = await results[0].json()
+  const regionData = compareAll ? await results[1].json() : null
+  renderResults(lmiData, regionData, cipCodes, 'cip')
+}
+
+async function fetchBySoc(socCodes, regionType, region, compareAll) {
+  const fetches = [
+    authFetch('/api/lmi/by-soc', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ socCodes, regionType, region, includeSkills: true })
+    })
+  ]
+  if (compareAll) {
+    fetches.push(authFetch('/api/lmi/soc-regional-compare', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ socCodes, regions: allRegions.map(r => ({ regionType: r.type, region: r.code !== '99' ? r.code : undefined })) })
+    }))
+  }
+
+  const results = await Promise.all(fetches)
+  const lmiData = await results[0].json()
+  const regionData = compareAll ? await results[1].json() : null
+  renderResults(lmiData, regionData, socCodes, 'soc')
+}
+
+// ─── Render Results ────────────────
+function renderResults(lmiData, regionData, codes, queryMode) {
+  const main = document.getElementById('mainContent')
+  if (lmiData.object === 'error') {
+    main.innerHTML = `<div style="padding:20px;color:var(--danger)">❌ API Error: ${lmiData.error?.message || JSON.stringify(lmiData.error)}</div>`
+    return
+  }
+
+  const occupations = lmiData.data?.matchedOccupations || []
+  const warnings = lmiData.data?.warnings || []
+  const regionLabel = lmiData.data?.region || 'United States'
+  let html = ''
+
+  // Summary bar
+  if (selectedPrograms.length > 0) {
+    html += `<div style="background:var(--primary-bg);border:1px solid #c7d2fe;border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--primary);">
+      📋 Querying for: ${selectedPrograms.map(p => `<strong>${p.longName || p.name}</strong> (CIP ${p.cipCode})`).join(', ')} · ${regionLabel}
+    </div>`
+  }
+
+  if (warnings.length) {
+    html += `<div style="background:var(--warning-bg);border:1px solid #fde68a;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--warning);">
+      ⚠️ ${warnings.map(w => w.message).join('. ')} <br><small>Sandbox only supports CIP codes 11.0101, 11.0701, 27.0501 / SOC codes 15-1252, 15-2051</small>
+    </div>`
+  }
+
+  if (!occupations.length) {
+    html += `<div class="empty"><div class="e-icon">🔍</div><h3>No Occupations Found</h3><p>Try a sandbox-supported code.</p></div>`
+    main.innerHTML = html; return
+  }
+
+  // ── Overview stats ──
+  const avgSalary = occupations.reduce((s, o) => s + (o.laborMarketData?.medianAnnualSalary || 0), 0) / occupations.length
+  const totalEmploy = occupations.reduce((s, o) => s + (o.laborMarketData?.totalEmployment || 0), 0)
+
+  html += `<div class="section-title">📊 Overview · ${regionLabel}</div>`
+  html += `<div class="stats-row">`
+  html += `<div class="stat-card highlight"><div class="s-label">💼 Matched Occupations</div><div class="s-value">${occupations.length}</div></div>`
+  html += `<div class="stat-card highlight"><div class="s-label">💰 Avg Median Salary</div><div class="s-value">${fmt$(Math.round(avgSalary))}</div></div>`
+  html += `<div class="stat-card"><div class="s-label">👥 Total Employment</div><div class="s-value">${fmtN(totalEmploy)}</div></div>`
+  html += `<div class="stat-card"><div class="s-label">🔍 Query</div><div class="s-value" style="font-size:14px">${queryMode.toUpperCase()}: ${codes.join(', ')}</div></div>`
+  html += `</div>`
+
+  // ── Each occupation ──
+  occupations.forEach((occ, idx) => {
+    const lmd = occ.laborMarketData || {}
+    const demand = lmd.demand || {}
+    const skills = occ.skillRequirements || {}
+
+    html += `<div class="occ-card">`
+    html += `<div class="occ-header">
+      <h4>💼 ${occ.name}</h4>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="tag tag-soc">SOC ${occ.socCode}</span>
+        ${demand.score != null ? `<span class="tag tag-demand">Demand ${demand.score}/2</span>` : ''}
+        <button class="btn btn-sm btn-info" onclick="drillSoc('${occ.socCode}')">🔎 Drill SOC</button>
+      </div>
+    </div>`
+
+    html += `<div class="occ-body">`
+    html += `<div class="occ-desc">${occ.description || ''}</div>`
+
+    if (occ.alternativeTitles?.length) {
+      html += `<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--gray-500)">Also known as:</span>
+        <div class="alt-titles">${occ.alternativeTitles.map(t => `<span class="alt-title">${t}</span>`).join('')}</div></div>`
+    }
+
+    // Stats row
+    html += `<div class="stats-row">`
+    html += statCard('💰 Median Salary', fmt$(lmd.medianAnnualSalary), regionLabel, true)
+    html += statCard('👥 Employment', fmtN(lmd.totalEmployment), 'Workforce size')
+    html += statCard('📈 Growth', fmtP(lmd.forecastedEmploymentGrowth), `${demand.growthPercentile || '—'}th percentile`, false, demand.growthPercentile)
+    html += statCard('📋 Openings', fmtP(lmd.averageAnnualOpenings), `${demand.openingsPercentile || '—'}th percentile`, false, demand.openingsPercentile)
+    html += statCard('🎓 Education', lmd.typicalDegreeLevel || 'N/A', `Experience: ${lmd.typicalWorkExperience || 'None'}`)
+    html += `<div class="stat-card"><div class="s-label">🔥 Demand</div><div class="s-value">${demand.score ?? 'N/A'}/2</div>
+      <div style="display:flex;gap:4px;margin-top:6px">${[0,1].map(i => `<div style="width:28px;height:6px;border-radius:3px;background:${i < (demand.score||0) ? 'var(--success)' : 'var(--gray-200)'}"></div>`).join('')}</div>
+      ${demand.factors?.length ? `<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">${demand.factors.map(f => `<span style="background:var(--success-bg);color:var(--success);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">${f}</span>`).join('')}</div>` : ''}
+    </div>`
+    html += `</div>`
+
+    // Skills
+    if (skills.coreSkills?.length || skills.relevantSkills?.length || skills.transferableSkills?.length) {
+      html += `<div class="section-title" style="margin-top:12px">🛠️ Skills</div>`
+      html += `<div class="skills-grid">`
+      html += skillCol('Core', 'core', skills.coreSkills)
+      html += skillCol('Relevant', 'relevant', skills.relevantSkills)
+      html += skillCol('Transferable', 'transferable', skills.transferableSkills)
+      html += `</div>`
+    }
+
+    html += `</div></div>` // occ-body, occ-card
+  })
+
+  // ── Regional Comparison ──
+  if (regionData && Array.isArray(regionData)) {
+    html += `<div class="section-title" style="margin-top:24px">📍 Regional Comparison</div>`
+
+    // Salary bars
+    const regionSalaries = regionData.map((r, i) => ({
+      label: allRegions[i]?.label || '?',
+      salary: r?.data?.matchedOccupations?.[0]?.laborMarketData?.medianAnnualSalary || 0,
+      employment: r?.data?.matchedOccupations?.[0]?.laborMarketData?.totalEmployment || 0,
+      growth: r?.data?.matchedOccupations?.[0]?.laborMarketData?.forecastedEmploymentGrowth,
+    })).filter(r => r.salary > 0).sort((a, b) => b.salary - a.salary)
+
+    if (regionSalaries.length) {
+      const max = regionSalaries[0].salary
+      html += `<div style="background:white;border:1px solid var(--gray-200);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)">`
+      html += `<div class="section-title">💰 Salary by Region</div>`
+      regionSalaries.forEach((r, i) => {
+        html += `<div class="sal-bar-row">
+          <div class="sal-label">${r.label}</div>
+          <div class="sal-track"><div class="sal-fill c${(i%3)+1}" style="width:${r.salary/max*100}%">${fmt$(r.salary)}</div></div>
+        </div>`
+      })
+      html += `</div>`
+    }
+
+    // Full table
+    html += `<div style="background:white;border:1px solid var(--gray-200);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow);overflow-x:auto">`
+    html += `<table class="region-table"><thead><tr>
+      <th>Region</th><th>Type</th><th>Salary</th><th>Employment</th><th>Growth</th><th>Growth Pctile</th><th>Openings</th><th>Openings Pctile</th><th>Demand</th>
+    </tr></thead><tbody>`
+
+    regionData.forEach((r, i) => {
+      const info = allRegions[i] || {}
+      const occ = r?.data?.matchedOccupations?.[0]
+      if (!occ) { html += `<tr><td>${info.label||'?'}</td><td>${info.type||''}</td><td colspan="7" style="color:var(--gray-400)">No data</td></tr>`; return }
+      const l = occ.laborMarketData || {}, d = l.demand || {}
+      html += `<tr>
+        <td><strong>${info.label||''}</strong></td><td>${info.type||''}</td>
+        <td style="font-weight:700">${fmt$(l.medianAnnualSalary)}</td><td>${fmtN(l.totalEmployment)}</td>
+        <td style="color:var(--success)">${fmtP(l.forecastedEmploymentGrowth)}</td><td>${d.growthPercentile!=null?d.growthPercentile+'th':'—'}</td>
+        <td>${fmtP(l.averageAnnualOpenings)}</td><td>${d.openingsPercentile!=null?d.openingsPercentile+'th':'—'}</td>
+        <td>${d.score!=null?d.score+'/2':'—'}</td>
+      </tr>`
+    })
+    html += `</tbody></table></div>`
+  }
+
+  // ── Raw JSON ──
+  html += `<button class="collapse-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('span').textContent=this.nextElementSibling.classList.contains('open')?'▼':'▶'">
+    📄 Raw API Response <span>▶</span></button>
+  <div class="collapse-content"><pre>${esc(JSON.stringify(lmiData, null, 2))}</pre></div>`
+
+  if (regionData) {
+    html += `<button class="collapse-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('span').textContent=this.nextElementSibling.classList.contains('open')?'▼':'▶'" style="margin-top:8px">
+      📄 Regional Data (${allRegions.length} regions) <span>▶</span></button>
+    <div class="collapse-content"><pre>${esc(JSON.stringify(regionData, null, 2))}</pre></div>`
+  }
+
+  // API meta
+  html += `<div style="text-align:center;padding:16px;font-size:11px;color:var(--gray-400);margin-top:12px;">
+    Request: ${lmiData.meta?.requestId||'—'} · ${lmiData.meta?.timestamp||'—'} · ${queryMode.toUpperCase()}: ${codes.join(', ')} · ${regionLabel}
+  </div>`
+
+  main.innerHTML = html
+}
+
+// ─── Drill into SOC code ───────────
+function drillSoc(socCode) {
+  setMode('soc')
+  document.getElementById('directSocInput').value = socCode
+  updateFetchBtn()
+  fetchData()
+}
+
+// ─── Helpers ───────────────────────
+function parseRegion(val) {
+  if (!val || val === 'national-99') return { regionType: 'national' }
+  const [type, code] = val.split('-')
+  return { regionType: type, region: code }
+}
+
+function fmt$(v) { return v != null ? '$' + v.toLocaleString() : 'N/A' }
+function fmtN(v) { return v != null ? v.toLocaleString() : 'N/A' }
+function fmtP(v) { return v != null ? (v * 100).toFixed(1) + '%' : 'N/A' }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+function statCard(label, value, sub, hl, pctile) {
+  let extra = ''
+  if (pctile != null) {
+    const cls = pctile >= 75 ? 'high' : pctile >= 40 ? 'med' : 'low'
+    extra = `<div class="pbar"><div class="pbar-fill ${cls}" style="width:${pctile}%"></div></div>`
+  }
+  return `<div class="stat-card${hl?' highlight':''}""><div class="s-label">${label}</div><div class="s-value">${value}</div><div class="s-sub">${sub||''}</div>${extra}</div>`
+}
+
+function skillCol(title, cls, items) {
+  const icons = { core: '⭐', relevant: '✓', transferable: '🔄' }
+  let h = `<div class="skill-col ${cls}"><h5>${icons[cls]||''} ${title} (${(items||[]).length})</h5>`
+  if (!items?.length) { h += `<div style="font-size:12px;color:var(--gray-400)">None</div>`; return h + '</div>' }
+  items.forEach(s => {
+    const enriched = enrichSkill(s.mslSkillId)
+    h += `<div class="skill-pill"><strong>${s.mslSkillName}</strong><small>${s.mslSkillDescription}</small>`
+    if (enriched?.exampleTasks?.length) h += `<small style="display:block;margin-top:4px;border-top:1px solid rgba(0,0,0,.06);padding-top:4px">Tasks: ${enriched.exampleTasks.join(', ')}</small>`
+    h += `<small style="opacity:.4;font-family:monospace">${s.mslSkillId}${enriched ? ' · '+enriched.domainName : ''}</small></div>`
+  })
+  return h + '</div>'
+}
+
+function enrichSkill(id) {
+  if (!skillsLibrary?.domains) return null
+  for (const d of skillsLibrary.domains) {
+    const s = d.skills?.find(s => s.id === id)
+    if (s) return { ...s, domainName: d.name }
+  }
+  return null
+}
+
+init()
+</script>
+</body>
+</html>

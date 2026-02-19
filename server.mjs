@@ -125,6 +125,48 @@ app.get('/api/schools/:schoolId/programs', (req, res) => {
   res.json(schoolData[school.id])
 })
 
+// GET /api/schools/:schoolId/filters - Get distinct filter values for a school
+app.get('/api/schools/:schoolId/filters', (req, res) => {
+  const school = SCHOOLS.find(s => s.id === req.params.schoolId)
+  if (!school) return res.status(404).json({ error: 'School not found' })
+  const programs = schoolData[school.id]?.programs || []
+
+  const unique = (field) => [...new Set(programs.map(p => p[field]).filter(Boolean))].sort()
+
+  res.json({
+    types: unique('type'),
+    degreeDesignations: unique('degreeDesignation'),
+    colleges: unique('college'),
+    levels: unique('level'),
+    cipCodes: unique('cipCode'),
+    totalPrograms: programs.length,
+  })
+})
+
+// POST /api/lmi/soc-regional-compare - Compare a SOC code across all regions
+app.post('/api/lmi/soc-regional-compare', requireAuth, async (req, res) => {
+  try {
+    const { socCodes, regions } = req.body
+    const results = await Promise.all(regions.map(async (r) => {
+      const body = { socCodes, regionType: r.regionType, includeSkills: false }
+      if (r.region) body.region = r.region
+      const response = await fetch(`${MAPADEMICS_BASE_URL}/labor-market-intelligence/by-soc`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${MAPADEMICS_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+      return response.json()
+    }))
+    res.json(results)
+  } catch (err) {
+    console.error('SOC regional compare error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // ─── LMI Proxy Endpoints ─────────────────────────────────
 app.post('/api/lmi/by-cip', async (req, res) => {
   try {
