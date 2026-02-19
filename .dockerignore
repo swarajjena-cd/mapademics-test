@@ -1,0 +1,5 @@
+node_modules
+dump-programs.mjs
+validate.mjs
+.env
+*.log

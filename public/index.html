@@ -1,0 +1,1882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapademics LMI Explorer – Coursedog POC</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-light: #818cf8;
+      --primary-bg: #eef2ff;
+      --success: #059669;
+      --success-bg: #ecfdf5;
+      --warning: #d97706;
+      --warning-bg: #fffbeb;
+      --danger: #dc2626;
+      --danger-bg: #fef2f2;
+      --info: #0284c7;
+      --info-bg: #e0f2fe;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-800);
+      line-height: 1.6;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+      color: white;
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .header-icon {
+      width: 48px; height: 48px;
+      background: rgba(255,255,255,.2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+    }
+
+    .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .header p { font-size: 13px; opacity: .8; margin-top: 2px; }
+
+    .badge {
+      margin-left: auto;
+      background: rgba(255,255,255,.2);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+    /* Controls */
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 16px;
+      margin-bottom: 24px;
+      align-items: end;
+    }
+
+    .control-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-600);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .control-group select, .control-group input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--gray-300);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--gray-800);
+      background: white;
+      transition: border-color .15s, box-shadow .15s;
+      cursor: pointer;
+    }
+
+    .control-group select:focus, .control-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79,70,229,.15);
+    }
+
+    .btn {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: #4338ca; }
+    .btn-primary:disabled { background: var(--gray-300); cursor: not-allowed; }
+
+    .btn-secondary {
+      background: white;
+      color: var(--gray-700);
+      border: 1px solid var(--gray-300);
+    }
+    .btn-secondary:hover { background: var(--gray-50); }
+
+    /* Info bar */
+    .info-bar {
+      background: var(--primary-bg);
+      border: 1px solid #c7d2fe;
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .info-bar.warning { background: var(--warning-bg); border-color: #fde68a; color: var(--warning); }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 60px;
+      color: var(--gray-500);
+      font-size: 15px;
+    }
+
+    .spinner {
+      width: 24px; height: 24px;
+      border: 3px solid var(--gray-200);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Program info bar */
+    .program-header {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .program-header .icon {
+      width: 52px; height: 52px;
+      background: var(--primary-bg);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .program-header .details h2 { font-size: 18px; font-weight: 700; color: var(--gray-900); }
+
+    .program-header .details .meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--gray-500);
+      flex-wrap: wrap;
+    }
+
+    .program-header .details .meta span { display: flex; align-items: center; gap: 4px; }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tag-cip { background: var(--primary-bg); color: var(--primary); }
+    .tag-soc { background: var(--info-bg); color: var(--info); }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--gray-200);
+    }
+
+    .tab-btn {
+      padding: 12px 24px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray-500);
+      cursor: pointer;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn:hover { color: var(--gray-700); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    .tab-count {
+      background: var(--gray-100);
+      padding: 1px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      color: var(--gray-600);
+    }
+
+    .tab-btn.active .tab-count { background: var(--primary-bg); color: var(--primary); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: transform .15s, box-shadow .15s;
+    }
+
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+    .stat-card .label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-card .value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--gray-900);
+      line-height: 1.1;
+    }
+
+    .stat-card .subtext { font-size: 12px; color: var(--gray-500); margin-top: 6px; }
+    .stat-card.highlight { border-color: var(--primary-light); border-width: 2px; }
+
+    /* Demand indicator */
+    .demand-bar { display: flex; gap: 4px; margin-top: 8px; }
+    .demand-dot { width: 32px; height: 8px; border-radius: 4px; background: var(--gray-200); }
+    .demand-dot.active { background: var(--success); }
+
+    .demand-factors { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .demand-factor {
+      background: var(--success-bg); color: var(--success);
+      padding: 3px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 600;
+    }
+
+    /* Occupation cards */
+    .occupation-card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .occupation-card .card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .occupation-card .card-header h3 { font-size: 17px; font-weight: 700; color: var(--gray-900); }
+    .occupation-card .card-header .header-tags { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .occupation-card .card-header .soc-code {
+      background: var(--gray-100);
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-600);
+      font-family: monospace;
+    }
+
+    .occupation-card .card-body { padding: 20px 24px; }
+
+    .occupation-card .description {
+      font-size: 14px;
+      color: var(--gray-600);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .occupation-card .alt-titles { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .occupation-card .alt-title {
+      background: var(--gray-100);
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      color: var(--gray-600);
+    }
+
+    /* Skills section */
+    .skills-section { border-top: 1px solid var(--gray-100); padding: 20px 24px; }
+    .skills-section h4 { font-size: 14px; font-weight: 700; color: var(--gray-700); margin-bottom: 12px; }
+
+    .skills-columns {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .skill-group h5 {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .skill-group.core h5 { color: var(--primary); }
+    .skill-group.relevant h5 { color: var(--success); }
+    .skill-group.transferable h5 { color: var(--warning); }
+
+    .skill-item {
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      cursor: default;
+      transition: transform .1s;
+    }
+
+    .skill-item:hover { transform: translateX(4px); }
+
+    .skill-group.core .skill-item { background: var(--primary-bg); color: var(--primary); }
+    .skill-group.relevant .skill-item { background: var(--success-bg); color: var(--success); }
+    .skill-group.transferable .skill-item { background: var(--warning-bg); color: var(--warning); }
+
+    .skill-item .skill-name { font-weight: 600; display: block; }
+    .skill-item .skill-desc { font-size: 11px; opacity: .8; margin-top: 2px; display: block; }
+    .skill-item .skill-id { font-size: 10px; opacity: .5; margin-top: 3px; display: block; font-family: monospace; }
+    .skill-item .skill-tasks {
+      font-size: 11px; opacity: .7; margin-top: 6px;
+      padding-top: 6px; border-top: 1px solid rgba(0,0,0,.08);
+    }
+    .skill-item .skill-tasks strong { display: block; margin-bottom: 2px; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 80px 32px; color: var(--gray-500); }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state h3 { font-size: 18px; color: var(--gray-700); margin-bottom: 8px; }
+
+    /* Percentile bar */
+    .percentile-bar {
+      height: 6px;
+      background: var(--gray-200);
+      border-radius: 3px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .percentile-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width .5s ease;
+    }
+
+    .percentile-fill.high { background: var(--success); }
+    .percentile-fill.medium { background: var(--warning); }
+    .percentile-fill.low { background: var(--danger); }
+
+    /* Salary bar chart */
+    .salary-comparison {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .salary-comparison h4 {
+      font-size: 14px; font-weight: 700; color: var(--gray-700);
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .salary-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .salary-bar-label {
+      width: 160px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-700);
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .salary-bar-track {
+      flex: 1;
+      height: 28px;
+      background: var(--gray-100);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .salary-bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding-left: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: white;
+      transition: width .6s ease;
+      min-width: 80px;
+    }
+
+    .salary-bar-fill.bar-1 { background: linear-gradient(90deg, #4f46e5, #818cf8); }
+    .salary-bar-fill.bar-2 { background: linear-gradient(90deg, #059669, #34d399); }
+    .salary-bar-fill.bar-3 { background: linear-gradient(90deg, #d97706, #fbbf24); }
+
+    /* Region comparison table */
+    .region-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+    }
+
+    .region-table th {
+      background: var(--gray-50);
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--gray-600);
+      border-bottom: 2px solid var(--gray-200);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .region-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--gray-100);
+      color: var(--gray-700);
+    }
+
+    .region-table tr:hover td { background: var(--gray-50); }
+
+    /* Skills Library Panel */
+    .skills-library-panel {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .domain-card {
+      border-bottom: 1px solid var(--gray-100);
+      padding: 0;
+    }
+
+    .domain-card:last-child { border-bottom: none; }
+
+    .domain-header {
+      padding: 16px 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background .15s;
+    }
+
+    .domain-header:hover { background: var(--gray-50); }
+
+    .domain-header h4 {
+      font-size: 15px; font-weight: 700; color: var(--gray-800);
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .domain-header .domain-count {
+      background: var(--primary-bg); color: var(--primary);
+      padding: 2px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 600;
+    }
+
+    .domain-header .toggle-icon {
+      font-size: 18px; color: var(--gray-400);
+      transition: transform .2s;
+    }
+
+    .domain-skills {
+      display: none;
+      padding: 0 24px 16px;
+    }
+
+    .domain-skills.open { display: block; }
+
+    .domain-skill-item {
+      padding: 12px 16px;
+      background: var(--gray-50);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .domain-skill-item .ds-name { font-weight: 700; font-size: 14px; color: var(--gray-800); }
+    .domain-skill-item .ds-id { font-size: 11px; font-family: monospace; color: var(--gray-400); margin-left: 8px; }
+    .domain-skill-item .ds-desc { font-size: 13px; color: var(--gray-600); margin-top: 4px; }
+
+    .domain-skill-item .ds-tasks {
+      margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gray-200);
+    }
+    .domain-skill-item .ds-tasks-label { font-size: 11px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
+    .domain-skill-item .ds-task-list {
+      list-style: none; padding: 0; margin-top: 4px;
+    }
+    .domain-skill-item .ds-task-list li {
+      font-size: 12px; color: var(--gray-500);
+      padding: 2px 0;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .domain-skill-item .ds-task-list li::before { content: '→'; color: var(--gray-300); }
+
+    /* Collapsible Raw JSON */
+    .collapsible {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .collapsible-toggle {
+      width: 100%;
+      padding: 14px 24px;
+      background: var(--gray-50);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-600);
+    }
+
+    .collapsible-toggle:hover { background: var(--gray-100); }
+
+    .collapsible-content {
+      display: none;
+      padding: 16px 24px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .collapsible-content.open { display: block; }
+
+    .collapsible-content pre {
+      background: var(--gray-900);
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    /* Summary box */
+    .summary-box {
+      background: linear-gradient(135deg, var(--primary-bg), #f0f9ff);
+      border: 1px solid #c7d2fe;
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+
+    .summary-box h4 {
+      font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .summary-item { font-size: 13px; }
+    .summary-item .s-label { color: var(--gray-500); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+    .summary-item .s-value { font-weight: 700; color: var(--gray-800); margin-top: 2px; }
+
+    /* API Metadata */
+    .api-metadata {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 16px 24px;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      font-size: 12px;
+    }
+
+    .api-metadata .meta-item .meta-label {
+      color: var(--gray-400);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .api-metadata .meta-item .meta-value {
+      color: var(--gray-600);
+      font-family: monospace;
+      margin-top: 2px;
+    }
+
+    /* Login overlay */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #2563eb 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity .4s, visibility .4s;
+    }
+
+    .login-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .login-card {
+      background: white;
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 420px;
+      max-width: 90vw;
+      box-shadow: 0 25px 50px rgba(0,0,0,.25);
+      text-align: center;
+    }
+
+    .login-card .login-icon {
+      width: 72px; height: 72px;
+      background: var(--primary-bg);
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      margin-bottom: 20px;
+    }
+
+    .login-card h2 {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin-bottom: 6px;
+    }
+
+    .login-card p {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-bottom: 28px;
+    }
+
+    .login-card input {
+      width: 100%;
+      padding: 14px 18px;
+      border: 2px solid var(--gray-200);
+      border-radius: 12px;
+      font-size: 16px;
+      text-align: center;
+      letter-spacing: 1px;
+      transition: border-color .15s, box-shadow .15s;
+      margin-bottom: 16px;
+    }
+
+    .login-card input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(79,70,229,.15);
+    }
+
+    .login-card .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .login-card .login-btn:hover { background: #4338ca; }
+    .login-card .login-btn:disabled { background: var(--gray-300); cursor: not-allowed; }
+
+    .login-error {
+      color: var(--danger);
+      font-size: 13px;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+
+    .logout-btn {
+      background: rgba(255,255,255,.2);
+      border: 1px solid rgba(255,255,255,.3);
+      color: white;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+      margin-left: 12px;
+    }
+
+    .logout-btn:hover { background: rgba(255,255,255,.3); }
+
+    @media (max-width: 768px) {
+      .controls { grid-template-columns: 1fr; }
+      .skills-columns { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Login overlay -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+      <div class="login-icon">🔐</div>
+      <h2>Coursedog × Mapademics</h2>
+      <p>Enter the access code to explore labor market intelligence data</p>
+      <form onsubmit="handleLogin(event)">
+        <input type="password" id="accessCodeInput" placeholder="Enter access code…" autocomplete="off" autofocus>
+        <button type="submit" class="login-btn" id="loginBtn">Unlock Dashboard</button>
+      </form>
+      <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
+
+  <div class="header">
+    <div class="header-icon">📊</div>
+    <div>
+      <h1>Labor Market Intelligence Explorer</h1>
+      <p>Coursedog × Mapademics – Full Data Dashboard</p>
+    </div>
+    <div class="badge">🧪 Sandbox <button class="logout-btn" onclick="logout()">🚪 Logout</button></div>
+  </div>
+
+  <div class="container">
+    <div class="info-bar">
+      <span>ℹ️</span>
+      <span>
+        Select a school and program to explore <strong>all</strong> labor market data from Mapademics: occupations, salaries, employment stats, growth projections, demand indicators, skills requirements, regional comparisons, and the full skills library.
+        <strong>Sandbox</strong> supports CIP codes 11.0101, 11.0701, 27.0501.
+      </span>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>School</label>
+        <select id="schoolSelect">
+          <option value="">Select a school…</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Program</label>
+        <select id="programSelect" disabled>
+          <option value="">Select a program…</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Region</label>
+        <select id="regionSelect">
+          <option value="national">🇺🇸 Loading regions…</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="fetchBtn" disabled onclick="fetchLMI()">
+        <span>🔍</span> Fetch All Data
+      </button>
+    </div>
+
+    <div id="results"></div>
+
+    <div class="empty-state" id="emptyState">
+      <div class="icon">🎓</div>
+      <h3>Select a School & Program</h3>
+      <p>Choose a school and program above to explore all labor market intelligence data from Mapademics</p>
+    </div>
+  </div>
+
+  <script>
+    let schools = []
+    let programs = []
+    let selectedProgram = null
+    let allRegions = []
+    let skillsLibrary = null
+    let authToken = sessionStorage.getItem('mapademics_token') || ''
+
+    // ─── Auth helpers ─────────────────────────
+    function authHeaders() {
+      return { 'X-Access-Token': authToken }
+    }
+
+    function authFetch(url, opts = {}) {
+      opts.headers = { ...(opts.headers || {}), ...authHeaders() }
+      return fetch(url, opts)
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault()
+      const code = document.getElementById('accessCodeInput').value
+      const errorDiv = document.getElementById('loginError')
+      const btn = document.getElementById('loginBtn')
+      errorDiv.textContent = ''
+      btn.disabled = true
+      btn.textContent = 'Verifying…'
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          errorDiv.textContent = data.error || 'Invalid access code'
+          btn.disabled = false
+          btn.textContent = 'Unlock Dashboard'
+          return
+        }
+        authToken = data.token
+        sessionStorage.setItem('mapademics_token', authToken)
+        document.getElementById('loginOverlay').classList.add('hidden')
+        loadDashboard()
+      } catch (err) {
+        errorDiv.textContent = 'Connection error. Please try again.'
+        btn.disabled = false
+        btn.textContent = 'Unlock Dashboard'
+      }
+    }
+
+    function logout() {
+      authToken = ''
+      sessionStorage.removeItem('mapademics_token')
+      document.getElementById('loginOverlay').classList.remove('hidden')
+      document.getElementById('accessCodeInput').value = ''
+      document.getElementById('loginError').textContent = ''
+      document.getElementById('loginBtn').disabled = false
+      document.getElementById('loginBtn').textContent = 'Unlock Dashboard'
+    }
+
+    // ─── Initialize ───────────────────────────
+    async function init() {
+      // Check if we have a saved token
+      if (authToken) {
+        try {
+          const res = await fetch('/api/auth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Access-Token': authToken },
+          })
+          const data = await res.json()
+          if (data.valid) {
+            document.getElementById('loginOverlay').classList.add('hidden')
+            loadDashboard()
+            return
+          }
+        } catch (e) { /* token invalid, show login */ }
+        authToken = ''
+        sessionStorage.removeItem('mapademics_token')
+      }
+      // Show login overlay (default state)
+    }
+
+    async function loadDashboard() {
+      const [schoolsRes, regionsRes, skillsRes] = await Promise.all([
+        authFetch('/api/schools'),
+        authFetch('/api/lmi/regions'),
+        authFetch('/api/skills-library/tree'),
+      ])
+
+      schools = await schoolsRes.json()
+      const regionsData = await regionsRes.json()
+      allRegions = regionsData.data || []
+      const skillsData = await skillsRes.json()
+      skillsLibrary = skillsData.data || null
+
+      // Populate schools
+      const schoolSelect = document.getElementById('schoolSelect')
+      schoolSelect.innerHTML = '<option value="">Select a school…</option>'
+      schools.forEach(s => {
+        const opt = document.createElement('option')
+        opt.value = s.id
+        opt.textContent = s.label
+        schoolSelect.appendChild(opt)
+      })
+
+      // Populate regions dynamically
+      const regionSelect = document.getElementById('regionSelect')
+      regionSelect.innerHTML = ''
+      const regionGroups = { national: '🇺🇸 National', state: '🏛️ States', msa: '🏙️ Metro Areas' }
+      for (const [type, label] of Object.entries(regionGroups)) {
+        const items = allRegions.filter(r => r.type === type)
+        if (items.length === 0) continue
+        const grp = document.createElement('optgroup')
+        grp.label = label
+        items.forEach(r => {
+          const opt = document.createElement('option')
+          opt.value = `${r.type}-${r.code}`
+          opt.textContent = r.label
+          grp.appendChild(opt)
+        })
+        regionSelect.appendChild(grp)
+      }
+    }
+
+    // Load programs when school changes
+    document.getElementById('schoolSelect').addEventListener('change', async (e) => {
+      const schoolId = e.target.value
+      const programSelect = document.getElementById('programSelect')
+      const fetchBtn = document.getElementById('fetchBtn')
+      programSelect.innerHTML = '<option value="">Loading programs…</option>'
+      programSelect.disabled = true
+      fetchBtn.disabled = true
+      selectedProgram = null
+
+      if (!schoolId) {
+        programSelect.innerHTML = '<option value="">Select a program…</option>'
+        return
+      }
+
+      const res = await authFetch(`/api/schools/${schoolId}/programs`)
+      const data = await res.json()
+      programs = data.programs
+
+      programSelect.innerHTML = '<option value="">Select a program…</option>'
+
+      const sandboxCips = ['11.0101', '11.0701', '27.0501']
+      const supported = programs.filter(p => sandboxCips.includes(p.cipCode))
+      const unsupported = programs.filter(p => !sandboxCips.includes(p.cipCode))
+
+      if (supported.length > 0) {
+        const grp = document.createElement('optgroup')
+        grp.label = `✅ Sandbox-supported CIP codes (${supported.length})`
+        supported.forEach(p => {
+          const opt = document.createElement('option')
+          opt.value = p.code
+          const displayName = p.longName || p.name || p.code
+          opt.textContent = `${displayName} — CIP: ${p.cipCode} ${p.degreeDesignation ? `(${p.degreeDesignation})` : ''}`
+          grp.appendChild(opt)
+        })
+        programSelect.appendChild(grp)
+      }
+
+      if (unsupported.length > 0) {
+        const grp = document.createElement('optgroup')
+        grp.label = `⚠️ Other programs – CIP not in sandbox (${unsupported.length})`
+        unsupported.slice(0, 50).forEach(p => {
+          const opt = document.createElement('option')
+          opt.value = p.code
+          const displayName = p.longName || p.name || p.code
+          opt.textContent = `${displayName} — CIP: ${p.cipCode} ${p.degreeDesignation ? `(${p.degreeDesignation})` : ''}`
+          grp.appendChild(opt)
+        })
+        if (unsupported.length > 50) {
+          const opt = document.createElement('option')
+          opt.disabled = true
+          opt.textContent = `... and ${unsupported.length - 50} more programs`
+          grp.appendChild(opt)
+        }
+        programSelect.appendChild(grp)
+      }
+
+      programSelect.disabled = false
+    })
+
+    // Track selected program
+    document.getElementById('programSelect').addEventListener('change', (e) => {
+      selectedProgram = programs.find(p => p.code === e.target.value) || null
+      document.getElementById('fetchBtn').disabled = !selectedProgram
+    })
+
+    // Parse region select value
+    function parseRegion(val) {
+      if (!val || val === 'national-99') return { regionType: 'national' }
+      const [type, code] = val.split('-')
+      return { regionType: type, region: code }
+    }
+
+    // Fetch ALL data
+    async function fetchLMI() {
+      if (!selectedProgram) return
+
+      const resultsDiv = document.getElementById('results')
+      const emptyState = document.getElementById('emptyState')
+      emptyState.style.display = 'none'
+      resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Fetching all data from Mapademics (LMI, Skills, Regional Comparison)…</div>'
+
+      const regionVal = document.getElementById('regionSelect').value
+      const { regionType, region } = parseRegion(regionVal)
+
+      try {
+        // Fetch primary LMI data and regional comparison in parallel
+        const [lmiRes, regionCompareRes] = await Promise.all([
+          authFetch('/api/lmi/by-cip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cipCodes: [selectedProgram.cipCode],
+              regionType,
+              region,
+              includeSkills: true,
+            }),
+          }),
+          // Compare across all regions
+          authFetch('/api/lmi/compare-regions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cipCodes: [selectedProgram.cipCode],
+              regions: allRegions.map(r => ({
+                regionType: r.type,
+                region: r.code !== '99' ? r.code : undefined,
+              })),
+            }),
+          }),
+        ])
+
+        const lmiData = await lmiRes.json()
+        const regionData = await regionCompareRes.json()
+
+        renderFullDashboard(lmiData, regionData, selectedProgram)
+      } catch (err) {
+        resultsDiv.innerHTML = `<div class="info-bar warning">⚠️ Error: ${err.message}</div>`
+      }
+    }
+
+    // Utility functions
+    function formatCurrency(val) { return val != null ? '$' + val.toLocaleString() : 'N/A' }
+    function formatNumber(val) { return val != null ? val.toLocaleString() : 'N/A' }
+    function formatPercent(val) { return val != null ? (val * 100).toFixed(1) + '%' : 'N/A' }
+    function percentileClass(val) {
+      if (val >= 75) return 'high'
+      if (val >= 40) return 'medium'
+      return 'low'
+    }
+
+    // Enrich skill with data from skills library
+    function enrichSkill(skillId) {
+      if (!skillsLibrary?.domains) return null
+      for (const domain of skillsLibrary.domains) {
+        const skill = domain.skills?.find(s => s.id === skillId)
+        if (skill) return { ...skill, domainName: domain.name, domainId: domain.id }
+      }
+      return null
+    }
+
+    function renderFullDashboard(lmiData, regionCompareData, program) {
+      const resultsDiv = document.getElementById('results')
+      const schoolLabel = document.getElementById('schoolSelect').selectedOptions[0]?.text || ''
+
+      if (lmiData.object === 'error') {
+        resultsDiv.innerHTML = `<div class="info-bar warning">⚠️ API Error: ${lmiData.error?.message || JSON.stringify(lmiData.error)}</div>`
+        return
+      }
+
+      const occupations = lmiData.data?.matchedOccupations || []
+      const warnings = lmiData.data?.warnings || []
+      const regionLabel = lmiData.data?.region || 'United States'
+      const cipCodes = lmiData.data?.cipCodes || []
+
+      let html = ''
+
+      // ─── Program Header ───
+      html += `
+        <div class="program-header">
+          <div class="icon">🎓</div>
+          <div class="details">
+            <h2>${program.longName || program.name || program.code}</h2>
+            <div class="meta">
+              <span>🏫 ${schoolLabel}</span>
+              <span>📋 ${program.degreeDesignation || program.type || ''}</span>
+              ${program.college ? `<span>🏛️ ${program.college}</span>` : ''}
+              ${program.level ? `<span>📊 Level: ${program.level}</span>` : ''}
+              <span class="tag tag-cip">CIP: ${program.cipCode}</span>
+              <span>📍 ${regionLabel}</span>
+            </div>
+          </div>
+        </div>
+      `
+
+      // ─── Warnings ───
+      if (warnings.length > 0) {
+        html += `<div class="info-bar warning">
+          ⚠️ ${warnings.map(w => w.message).join('. ')}
+          <br><small>Sandbox only supports CIP codes 11.0101, 11.0701, and 27.0501.</small>
+        </div>`
+      }
+
+      if (occupations.length === 0) {
+        html += `<div class="empty-state">
+          <div class="icon">🔍</div>
+          <h3>No Occupations Found</h3>
+          <p>CIP code ${program.cipCode} is not in the sandbox dataset. In production, this will return matching occupations.</p>
+        </div>`
+        resultsDiv.innerHTML = html
+        return
+      }
+
+      // ─── Summary Box ───
+      const avgSalary = occupations.reduce((s, o) => s + (o.laborMarketData?.medianAnnualSalary || 0), 0) / occupations.length
+      const totalEmploy = occupations.reduce((s, o) => s + (o.laborMarketData?.totalEmployment || 0), 0)
+      const allSocCodes = occupations.map(o => o.socCode).filter(Boolean)
+      const allAltTitles = [...new Set(occupations.flatMap(o => o.alternativeTitles || []))]
+
+      html += `
+        <div class="summary-box">
+          <h4>📋 Data Summary</h4>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="s-label">Matched Occupations</div>
+              <div class="s-value">${occupations.length}</div>
+            </div>
+            <div class="summary-item">
+              <div class="s-label">Average Median Salary</div>
+              <div class="s-value">${formatCurrency(Math.round(avgSalary))}</div>
+            </div>
+            <div class="summary-item">
+              <div class="s-label">Combined Employment</div>
+              <div class="s-value">${formatNumber(totalEmploy)}</div>
+            </div>
+            <div class="summary-item">
+              <div class="s-label">SOC Codes</div>
+              <div class="s-value">${allSocCodes.join(', ')}</div>
+            </div>
+            <div class="summary-item">
+              <div class="s-label">CIP Codes Queried</div>
+              <div class="s-value">${cipCodes.join(', ')}</div>
+            </div>
+            <div class="summary-item">
+              <div class="s-label">Region</div>
+              <div class="s-value">${regionLabel} (${lmiData.data?.regionType || 'national'})</div>
+            </div>
+            <div class="summary-item">
+              <div class="s-label">All Job Titles</div>
+              <div class="s-value">${allAltTitles.length > 0 ? allAltTitles.join(', ') : 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+      `
+
+      // ─── Tabs ───
+      html += `
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab(this, 'tab-occupations')">
+            💼 Occupations <span class="tab-count">${occupations.length}</span>
+          </button>
+          <button class="tab-btn" onclick="switchTab(this, 'tab-salary-compare')">
+            💰 Salary Comparison
+          </button>
+          <button class="tab-btn" onclick="switchTab(this, 'tab-regions')">
+            📍 Regional Data <span class="tab-count">${allRegions.length}</span>
+          </button>
+          <button class="tab-btn" onclick="switchTab(this, 'tab-skills-library')">
+            📚 Skills Library <span class="tab-count">${skillsLibrary?.totalSkills || 0}</span>
+          </button>
+          <button class="tab-btn" onclick="switchTab(this, 'tab-raw-json')">
+            { } Raw Data
+          </button>
+        </div>
+      `
+
+      // ═══════════════════════════════════════════
+      // TAB 1: Occupations (main details)
+      // ═══════════════════════════════════════════
+      html += `<div class="tab-panel active" id="tab-occupations">`
+
+      occupations.forEach((occ, idx) => {
+        const lmd = occ.laborMarketData || {}
+        const demand = lmd.demand || {}
+        const skills = occ.skillRequirements || {}
+
+        html += `
+          <div style="margin-top: 8px; margin-bottom: 8px;">
+            <h3 style="font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-500); margin-bottom: 12px;">
+              ${idx > 0 ? '<hr style="border: none; border-top: 1px solid var(--gray-200); margin-bottom: 16px;">' : ''}
+              Occupation ${idx + 1} of ${occupations.length}
+            </h3>
+          </div>
+        `
+
+        html += `<div class="occupation-card">`
+
+        // Card header
+        html += `
+          <div class="card-header">
+            <div>
+              <h3>💼 ${occ.name}</h3>
+              <p style="font-size:12px; color:var(--gray-400); margin-top:4px;">${occ.description || ''}</p>
+            </div>
+            <div class="header-tags">
+              <span class="tag tag-soc">SOC ${occ.socCode}</span>
+            </div>
+          </div>
+        `
+
+        // Card body - alternative titles
+        html += `<div class="card-body">`
+
+        if (occ.alternativeTitles?.length) {
+          html += `
+            <div style="margin-bottom:20px">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500);margin-bottom:8px;">
+                🏷️ Alternative Job Titles
+              </div>
+              <div class="alt-titles">
+                ${occ.alternativeTitles.map(t => `<span class="alt-title">${t}</span>`).join('')}
+              </div>
+            </div>
+          `
+        }
+
+        html += `</div>`
+
+        // ── Stats grid (ALL fields) ──
+        html += `<div style="padding: 0 24px 20px;">`
+        html += `<div class="stats-grid">`
+
+        // 1. Median Annual Salary
+        html += `
+          <div class="stat-card highlight">
+            <div class="label">💰 Median Annual Salary</div>
+            <div class="value">${formatCurrency(lmd.medianAnnualSalary)}</div>
+            <div class="subtext">${regionLabel} median</div>
+          </div>
+        `
+
+        // 2. Total Employment
+        html += `
+          <div class="stat-card">
+            <div class="label">👥 Total Employment</div>
+            <div class="value">${formatNumber(lmd.totalEmployment)}</div>
+            <div class="subtext">Current workforce size</div>
+          </div>
+        `
+
+        // 3. Forecasted Employment Growth
+        html += `
+          <div class="stat-card">
+            <div class="label">📈 Forecasted Employment Growth</div>
+            <div class="value" style="color: ${(lmd.forecastedEmploymentGrowth || 0) > 0.1 ? 'var(--success)' : 'var(--gray-800)'}">
+              ${formatPercent(lmd.forecastedEmploymentGrowth)}
+            </div>
+            <div class="subtext">Projected growth rate</div>
+            ${demand.growthPercentile != null ? `
+              <div class="percentile-bar">
+                <div class="percentile-fill ${percentileClass(demand.growthPercentile)}" style="width:${demand.growthPercentile}%"></div>
+              </div>
+              <div class="subtext">${demand.growthPercentile}th percentile among all occupations</div>
+            ` : ''}
+          </div>
+        `
+
+        // 4. Average Annual Openings
+        html += `
+          <div class="stat-card">
+            <div class="label">📋 Avg Annual Openings Rate</div>
+            <div class="value">${formatPercent(lmd.averageAnnualOpenings)}</div>
+            <div class="subtext">Yearly job openings ratio</div>
+            ${demand.openingsPercentile != null ? `
+              <div class="percentile-bar">
+                <div class="percentile-fill ${percentileClass(demand.openingsPercentile)}" style="width:${demand.openingsPercentile}%"></div>
+              </div>
+              <div class="subtext">${demand.openingsPercentile}th percentile among all occupations</div>
+            ` : ''}
+          </div>
+        `
+
+        // 5. Typical Degree Level
+        html += `
+          <div class="stat-card">
+            <div class="label">🎓 Typical Entry Education</div>
+            <div class="value" style="font-size:18px;">${lmd.typicalDegreeLevel || 'N/A'}</div>
+            <div class="subtext">Most common degree for entry</div>
+          </div>
+        `
+
+        // 6. Typical Work Experience
+        html += `
+          <div class="stat-card">
+            <div class="label">⏳ Work Experience Required</div>
+            <div class="value" style="font-size:18px;">${lmd.typicalWorkExperience || 'None'}</div>
+            <div class="subtext">Typical experience needed for entry</div>
+          </div>
+        `
+
+        // 7. Market Demand Score
+        html += `
+          <div class="stat-card">
+            <div class="label">🔥 Market Demand Score</div>
+            <div class="value">${demand.score != null ? demand.score : 'N/A'}<span style="font-size:14px;color:var(--gray-400)">/2</span></div>
+            <div class="demand-bar">
+              ${[0, 1].map(i => `<div class="demand-dot ${i < (demand.score || 0) ? 'active' : ''}"></div>`).join('')}
+            </div>
+            ${demand.factors?.length ? `
+              <div class="demand-factors">
+                ${demand.factors.map(f => `<span class="demand-factor">${f}</span>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `
+
+        // 8. Growth Percentile
+        html += `
+          <div class="stat-card">
+            <div class="label">📊 Growth Percentile</div>
+            <div class="value" style="color:var(--success)">${demand.growthPercentile != null ? demand.growthPercentile + 'th' : 'N/A'}</div>
+            <div class="subtext">Compared to all occupations</div>
+            ${demand.growthPercentile != null ? `
+              <div class="percentile-bar">
+                <div class="percentile-fill ${percentileClass(demand.growthPercentile)}" style="width:${demand.growthPercentile}%"></div>
+              </div>
+            ` : ''}
+          </div>
+        `
+
+        // 9. Openings Percentile
+        html += `
+          <div class="stat-card">
+            <div class="label">🎯 Openings Percentile</div>
+            <div class="value" style="color:var(--info)">${demand.openingsPercentile != null ? demand.openingsPercentile + 'th' : 'N/A'}</div>
+            <div class="subtext">Job openings vs all occupations</div>
+            ${demand.openingsPercentile != null ? `
+              <div class="percentile-bar">
+                <div class="percentile-fill ${percentileClass(demand.openingsPercentile)}" style="width:${demand.openingsPercentile}%"></div>
+              </div>
+            ` : ''}
+          </div>
+        `
+
+        html += `</div></div>` // stats-grid + padding
+
+        // ── Skills Section with enriched data ──
+        if (skills.coreSkills?.length || skills.relevantSkills?.length || skills.transferableSkills?.length) {
+          html += `
+            <div class="skills-section">
+              <h4>🛠️ Skills Required for This Occupation</h4>
+              <div class="skills-columns">
+          `
+
+          const renderSkillGroup = (label, icon, cssClass, items) => {
+            html += `<div class="skill-group ${cssClass}"><h5>${icon} ${label} <span class="tab-count">${(items || []).length}</span></h5>`
+            if (!items || items.length === 0) {
+              html += '<div style="font-size:13px;color:var(--gray-400);">None listed</div>'
+            } else {
+              items.forEach(s => {
+                const enriched = enrichSkill(s.mslSkillId)
+                html += `
+                  <div class="skill-item">
+                    <span class="skill-name">${s.mslSkillName}</span>
+                    <span class="skill-desc">${s.mslSkillDescription}</span>
+                    <span class="skill-id">${s.mslSkillId}${enriched ? ` · ${enriched.domainName}` : ''}</span>
+                    ${enriched?.exampleTasks?.length ? `
+                      <div class="skill-tasks">
+                        <strong>Example Tasks:</strong>
+                        ${enriched.exampleTasks.map(t => `<span>→ ${t}</span>`).join('<br>')}
+                      </div>
+                    ` : ''}
+                  </div>
+                `
+              })
+            }
+            html += `</div>`
+          }
+
+          renderSkillGroup('Core Skills', '⭐', 'core', skills.coreSkills)
+          renderSkillGroup('Relevant Skills', '✓', 'relevant', skills.relevantSkills)
+          renderSkillGroup('Transferable Skills', '🔄', 'transferable', skills.transferableSkills)
+
+          html += `</div></div>` // skills-columns + skills-section
+        }
+
+        html += `</div>` // occupation-card
+      })
+
+      html += `</div>` // tab-occupations
+
+      // ═══════════════════════════════════════════
+      // TAB 2: Salary Comparison Bar Chart
+      // ═══════════════════════════════════════════
+      html += `<div class="tab-panel" id="tab-salary-compare">`
+
+      if (occupations.length > 0) {
+        const maxSalary = Math.max(...occupations.map(o => o.laborMarketData?.medianAnnualSalary || 0))
+
+        html += `<div class="salary-comparison">
+          <h4>💰 Salary Comparison Across Matched Occupations</h4>
+        `
+
+        occupations.forEach((occ, idx) => {
+          const salary = occ.laborMarketData?.medianAnnualSalary || 0
+          const pct = maxSalary > 0 ? (salary / maxSalary * 100) : 0
+          html += `
+            <div class="salary-bar-row">
+              <div class="salary-bar-label">${occ.name}<br><small style="font-weight:400;color:var(--gray-400)">SOC ${occ.socCode}</small></div>
+              <div class="salary-bar-track">
+                <div class="salary-bar-fill bar-${(idx % 3) + 1}" style="width:${pct}%">
+                  ${formatCurrency(salary)}
+                </div>
+              </div>
+            </div>
+          `
+        })
+
+        html += `</div>`
+
+        // Employment comparison
+        const maxEmploy = Math.max(...occupations.map(o => o.laborMarketData?.totalEmployment || 0))
+
+        html += `<div class="salary-comparison">
+          <h4>👥 Employment Size Comparison</h4>
+        `
+
+        occupations.forEach((occ, idx) => {
+          const employ = occ.laborMarketData?.totalEmployment || 0
+          const pct = maxEmploy > 0 ? (employ / maxEmploy * 100) : 0
+          html += `
+            <div class="salary-bar-row">
+              <div class="salary-bar-label">${occ.name}</div>
+              <div class="salary-bar-track">
+                <div class="salary-bar-fill bar-${(idx % 3) + 1}" style="width:${pct}%">
+                  ${formatNumber(employ)}
+                </div>
+              </div>
+            </div>
+          `
+        })
+
+        html += `</div>`
+
+        // Growth comparison
+        html += `<div class="salary-comparison">
+          <h4>📈 Growth & Openings Comparison</h4>
+          <table class="region-table">
+            <thead>
+              <tr>
+                <th>Occupation</th>
+                <th>SOC Code</th>
+                <th>Growth Rate</th>
+                <th>Growth Percentile</th>
+                <th>Openings Rate</th>
+                <th>Openings Percentile</th>
+                <th>Demand Score</th>
+                <th>Demand Factors</th>
+              </tr>
+            </thead>
+            <tbody>
+        `
+
+        occupations.forEach(occ => {
+          const lmd = occ.laborMarketData || {}
+          const demand = lmd.demand || {}
+          html += `
+            <tr>
+              <td><strong>${occ.name}</strong></td>
+              <td><code>${occ.socCode}</code></td>
+              <td style="color:var(--success)">${formatPercent(lmd.forecastedEmploymentGrowth)}</td>
+              <td>${demand.growthPercentile != null ? demand.growthPercentile + 'th' : 'N/A'}</td>
+              <td>${formatPercent(lmd.averageAnnualOpenings)}</td>
+              <td>${demand.openingsPercentile != null ? demand.openingsPercentile + 'th' : 'N/A'}</td>
+              <td>${demand.score != null ? demand.score + '/2' : 'N/A'}</td>
+              <td>${(demand.factors || []).map(f => `<span class="demand-factor">${f}</span>`).join(' ')}</td>
+            </tr>
+          `
+        })
+
+        html += `</tbody></table></div>`
+      }
+
+      html += `</div>` // tab-salary-compare
+
+      // ═══════════════════════════════════════════
+      // TAB 3: Regional Comparison
+      // ═══════════════════════════════════════════
+      html += `<div class="tab-panel" id="tab-regions">`
+
+      if (Array.isArray(regionCompareData) && regionCompareData.length > 0) {
+        // Build comparison table for each occupation
+        const firstOccupation = occupations[0]?.name || 'Primary Occupation'
+
+        html += `<div class="salary-comparison">
+          <h4>📍 Regional Salary & Employment Comparison</h4>
+          <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;">
+            Same CIP code (${program.cipCode}) queried across all ${allRegions.length} available regions.
+            Showing data for the first matched occupation in each region.
+          </p>
+          <table class="region-table">
+            <thead>
+              <tr>
+                <th>Region</th>
+                <th>Type</th>
+                <th>Median Salary</th>
+                <th>Employment</th>
+                <th>Growth Rate</th>
+                <th>Growth Pctile</th>
+                <th>Openings Rate</th>
+                <th>Openings Pctile</th>
+                <th>Demand</th>
+              </tr>
+            </thead>
+            <tbody>
+        `
+
+        regionCompareData.forEach((regionResult, idx) => {
+          const regionInfo = allRegions[idx] || {}
+          const occ = regionResult?.data?.matchedOccupations?.[0]
+          if (!occ) {
+            html += `
+              <tr>
+                <td>${regionInfo.label || 'Unknown'}</td>
+                <td>${regionInfo.type || ''}</td>
+                <td colspan="7" style="color:var(--gray-400)">No data available</td>
+              </tr>
+            `
+            return
+          }
+          const lmd = occ.laborMarketData || {}
+          const demand = lmd.demand || {}
+          html += `
+            <tr>
+              <td><strong>${regionInfo.label || regionResult?.data?.region || ''}</strong></td>
+              <td><span class="tag" style="background:var(--gray-100);color:var(--gray-600)">${regionInfo.type || ''}</span></td>
+              <td style="font-weight:700;">${formatCurrency(lmd.medianAnnualSalary)}</td>
+              <td>${formatNumber(lmd.totalEmployment)}</td>
+              <td style="color:var(--success)">${formatPercent(lmd.forecastedEmploymentGrowth)}</td>
+              <td>${demand.growthPercentile != null ? demand.growthPercentile + 'th' : 'N/A'}</td>
+              <td>${formatPercent(lmd.averageAnnualOpenings)}</td>
+              <td>${demand.openingsPercentile != null ? demand.openingsPercentile + 'th' : 'N/A'}</td>
+              <td>${demand.score != null ? demand.score + '/2' : 'N/A'}</td>
+            </tr>
+          `
+        })
+
+        html += `</tbody></table></div>`
+
+        // Regional salary bar chart
+        const regionSalaries = regionCompareData
+          .map((r, idx) => ({
+            label: allRegions[idx]?.label || 'Unknown',
+            salary: r?.data?.matchedOccupations?.[0]?.laborMarketData?.medianAnnualSalary || 0,
+          }))
+          .filter(r => r.salary > 0)
+          .sort((a, b) => b.salary - a.salary)
+
+        if (regionSalaries.length > 0) {
+          const maxRegSalary = regionSalaries[0].salary
+
+          html += `<div class="salary-comparison">
+            <h4>💰 Salary by Region – Visual Comparison</h4>
+          `
+
+          regionSalaries.forEach((r, idx) => {
+            const pct = (r.salary / maxRegSalary * 100)
+            html += `
+              <div class="salary-bar-row">
+                <div class="salary-bar-label">${r.label}</div>
+                <div class="salary-bar-track">
+                  <div class="salary-bar-fill bar-${(idx % 3) + 1}" style="width:${pct}%">
+                    ${formatCurrency(r.salary)}
+                  </div>
+                </div>
+              </div>
+            `
+          })
+
+          html += `</div>`
+        }
+      } else {
+        html += `<div class="info-bar warning">⚠️ Regional comparison data unavailable.</div>`
+      }
+
+      html += `</div>` // tab-regions
+
+      // ═══════════════════════════════════════════
+      // TAB 4: Skills Library Tree
+      // ═══════════════════════════════════════════
+      html += `<div class="tab-panel" id="tab-skills-library">`
+
+      if (skillsLibrary) {
+        html += `
+          <div class="summary-box">
+            <h4>📚 Mapademics Skills Library (MSL)</h4>
+            <div class="summary-grid">
+              <div class="summary-item">
+                <div class="s-label">Library Version</div>
+                <div class="s-value">${skillsLibrary.version || 'N/A'}</div>
+              </div>
+              <div class="summary-item">
+                <div class="s-label">Total Domains</div>
+                <div class="s-value">${skillsLibrary.totalDomains || 0}</div>
+              </div>
+              <div class="summary-item">
+                <div class="s-label">Total Skills</div>
+                <div class="s-value">${skillsLibrary.totalSkills || 0}</div>
+              </div>
+              <div class="summary-item">
+                <div class="s-label">Skills Used by This Program</div>
+                <div class="s-value">${countUsedSkills(occupations)}</div>
+              </div>
+            </div>
+          </div>
+        `
+
+        // Collect used skill IDs for highlighting
+        const usedSkillIds = new Set()
+        occupations.forEach(occ => {
+          const sr = occ.skillRequirements || {}
+          ;[...(sr.coreSkills || []), ...(sr.relevantSkills || []), ...(sr.transferableSkills || [])].forEach(s => {
+            usedSkillIds.add(s.mslSkillId)
+          })
+        })
+
+        html += `<div class="skills-library-panel">`
+
+        skillsLibrary.domains?.forEach((domain, dIdx) => {
+          const hasUsedSkills = domain.skills?.some(s => usedSkillIds.has(s.id))
+          html += `
+            <div class="domain-card">
+              <div class="domain-header" onclick="toggleDomain(this)">
+                <h4>
+                  ${hasUsedSkills ? '🟢' : '⚪'} ${domain.name}
+                  <span class="domain-count">${domain.skillCount} skills</span>
+                  <span style="font-size:11px;color:var(--gray-400);font-weight:400;font-family:monospace;">${domain.id}</span>
+                </h4>
+                <span class="toggle-icon">▶</span>
+              </div>
+              <div class="domain-skills ${hasUsedSkills ? 'open' : ''}">
+          `
+
+          domain.skills?.forEach(skill => {
+            const isUsed = usedSkillIds.has(skill.id)
+            html += `
+              <div class="domain-skill-item" style="${isUsed ? 'border-left: 3px solid var(--primary); background: var(--primary-bg);' : ''}">
+                <span class="ds-name">${isUsed ? '⭐ ' : ''}${skill.name}</span>
+                <span class="ds-id">${skill.id} · v${skill.version}</span>
+                <div class="ds-desc">${skill.description}</div>
+                ${skill.exampleTasks?.length ? `
+                  <div class="ds-tasks">
+                    <div class="ds-tasks-label">Example Tasks</div>
+                    <ul class="ds-task-list">
+                      ${skill.exampleTasks.map(t => `<li>${t}</li>`).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+              </div>
+            `
+          })
+
+          html += `</div></div>` // domain-skills + domain-card
+        })
+
+        html += `</div>` // skills-library-panel
+      } else {
+        html += `<div class="info-bar warning">⚠️ Skills library data unavailable.</div>`
+      }
+
+      html += `</div>` // tab-skills-library
+
+      // ═══════════════════════════════════════════
+      // TAB 5: Raw JSON Data
+      // ═══════════════════════════════════════════
+      html += `<div class="tab-panel" id="tab-raw-json">`
+
+      // Raw LMI response
+      html += `
+        <div class="collapsible">
+          <button class="collapsible-toggle" onclick="toggleCollapsible(this)">
+            📄 LMI by-CIP API Response (Full JSON) <span>▶</span>
+          </button>
+          <div class="collapsible-content">
+            <pre>${escapeHtml(JSON.stringify(lmiData, null, 2))}</pre>
+          </div>
+        </div>
+      `
+
+      // Raw regional data
+      html += `
+        <div class="collapsible">
+          <button class="collapsible-toggle" onclick="toggleCollapsible(this)">
+            📄 Regional Comparison Responses (${allRegions.length} regions) <span>▶</span>
+          </button>
+          <div class="collapsible-content">
+            <pre>${escapeHtml(JSON.stringify(regionCompareData, null, 2))}</pre>
+          </div>
+        </div>
+      `
+
+      // Raw skills library
+      if (skillsLibrary) {
+        html += `
+          <div class="collapsible">
+            <button class="collapsible-toggle" onclick="toggleCollapsible(this)">
+              📄 Skills Library Tree (Full JSON) <span>▶</span>
+            </button>
+            <div class="collapsible-content">
+              <pre>${escapeHtml(JSON.stringify(skillsLibrary, null, 2))}</pre>
+            </div>
+          </div>
+        `
+      }
+
+      // Raw regions
+      html += `
+        <div class="collapsible">
+          <button class="collapsible-toggle" onclick="toggleCollapsible(this)">
+            📄 Available Regions (Full JSON) <span>▶</span>
+          </button>
+          <div class="collapsible-content">
+            <pre>${escapeHtml(JSON.stringify(allRegions, null, 2))}</pre>
+          </div>
+        </div>
+      `
+
+      html += `</div>` // tab-raw-json
+
+      // ─── API Metadata Footer ───
+      html += `
+        <div class="api-metadata">
+          <div class="meta-item">
+            <div class="meta-label">API Object Type</div>
+            <div class="meta-value">${lmiData.object || 'N/A'}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Request ID</div>
+            <div class="meta-value">${lmiData.meta?.requestId || 'N/A'}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Timestamp</div>
+            <div class="meta-value">${lmiData.meta?.timestamp || 'N/A'}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">CIP Codes</div>
+            <div class="meta-value">${cipCodes.join(', ')}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Region Type</div>
+            <div class="meta-value">${lmiData.data?.regionType || 'N/A'}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Region</div>
+            <div class="meta-value">${regionLabel}</div>
+          </div>
+        </div>
+      `
+
+      resultsDiv.innerHTML = html
+    }
+
+    // Count unique skills used in occupations
+    function countUsedSkills(occupations) {
+      const ids = new Set()
+      occupations.forEach(occ => {
+        const sr = occ.skillRequirements || {}
+        ;[...(sr.coreSkills || []), ...(sr.relevantSkills || []), ...(sr.transferableSkills || [])].forEach(s => {
+          ids.add(s.mslSkillId)
+        })
+      })
+      return ids.size
+    }
+
+    // Tab switching
+    function switchTab(btn, panelId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'))
+      btn.classList.add('active')
+      document.getElementById(panelId).classList.add('active')
+    }
+
+    // Toggle domain accordion
+    function toggleDomain(header) {
+      const skills = header.nextElementSibling
+      const icon = header.querySelector('.toggle-icon')
+      skills.classList.toggle('open')
+      icon.textContent = skills.classList.contains('open') ? '▼' : '▶'
+    }
+
+    // Toggle collapsible
+    function toggleCollapsible(toggle) {
+      const content = toggle.nextElementSibling
+      const icon = toggle.querySelector('span:last-child')
+      content.classList.toggle('open')
+      icon.textContent = content.classList.contains('open') ? '▼' : '▶'
+    }
+
+    // Escape HTML for raw JSON display
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    }
+
+    init()
+  </script>
+</body>
+</html>
