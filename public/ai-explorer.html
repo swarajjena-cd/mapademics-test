@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI SOC Explorer – Mapademics POC</title>
+  <style>
+    :root {
+      --primary: #4f46e5; --primary-light: #818cf8; --primary-bg: #eef2ff;
+      --success: #059669; --success-bg: #ecfdf5;
+      --warning: #d97706; --warning-bg: #fffbeb;
+      --danger: #dc2626; --danger-bg: #fef2f2;
+      --info: #0284c7; --info-bg: #e0f2fe;
+      --ai: #8b5cf6; --ai-bg: #f5f3ff;
+      --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+      --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+      --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937; --gray-900: #111827;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-50); color: var(--gray-800); line-height: 1.6; }
+
+    /* Header */
+    .header { background: linear-gradient(135deg, #8b5cf6 0%, #4f46e5 50%, #7c3aed 100%); color: white; padding: 16px 32px; display: flex; align-items: center; gap: 16px; box-shadow: var(--shadow-lg); }
+    .header-icon { width: 40px; height: 40px; background: rgba(255,255,255,.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .nav-link { color: rgba(255,255,255,.7); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; transition: all .15s; }
+    .nav-link:hover, .nav-link.active { color: white; background: rgba(255,255,255,.15); }
+    .badge { background: rgba(255,255,255,.2); padding: 4px 12px; border-radius: 16px; font-size: 11px; font-weight: 600; }
+    .logout-btn { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.2); color: white; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
+
+    /* Login overlay */
+    .login-overlay { position: fixed; inset: 0; background: linear-gradient(135deg, #8b5cf6 0%, #4f46e5 50%, #7c3aed 100%); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .login-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .4s, visibility .4s; }
+    .login-card { background: white; border-radius: 20px; padding: 48px 40px; width: 420px; max-width: 90vw; box-shadow: 0 25px 50px rgba(0,0,0,.25); text-align: center; }
+    .login-card .login-icon { width: 72px; height: 72px; background: var(--ai-bg); border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 36px; margin-bottom: 20px; }
+    .login-card h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .login-card p { font-size: 14px; color: var(--gray-500); margin-bottom: 28px; }
+    .login-input { width: 100%; padding: 14px 18px; border: 2px solid var(--gray-200); border-radius: 12px; font-size: 15px; outline: none; margin-bottom: 16px; }
+    .login-input:focus { border-color: var(--ai); }
+    .login-btn { width: 100%; padding: 14px; background: var(--ai); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .login-btn:hover { background: #7c3aed; }
+    .login-error { color: var(--danger); font-size: 13px; margin-top: 12px; display: none; }
+
+    /* Layout */
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+
+    /* Step flow */
+    .steps { display: flex; gap: 8px; margin-bottom: 24px; align-items: center; }
+    .step { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; background: var(--gray-100); color: var(--gray-400); transition: all .2s; }
+    .step.active { background: var(--ai-bg); color: var(--ai); }
+    .step.done { background: var(--success-bg); color: var(--success); }
+    .step-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: var(--gray-200); color: var(--gray-400); }
+    .step.active .step-num { background: var(--ai); color: white; }
+    .step.done .step-num { background: var(--success); color: white; }
+    .step-arrow { color: var(--gray-300); font-size: 18px; }
+
+    /* Cards */
+    .card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--gray-200); margin-bottom: 20px; overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; gap: 10px; }
+    .card-header h3 { font-size: 15px; font-weight: 700; }
+    .card-body { padding: 20px; }
+
+    /* Form */
+    label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
+    select, input[type="text"] { width: 100%; padding: 10px 14px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; background: white; }
+    select:focus, input[type="text"]:focus { border-color: var(--ai); box-shadow: 0 0 0 3px rgba(139,92,246,.1); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .form-group { margin-bottom: 16px; }
+
+    /* Program card */
+    .program-card { padding: 16px; border: 2px solid var(--gray-200); border-radius: 10px; cursor: pointer; transition: all .15s; margin-bottom: 10px; }
+    .program-card:hover { border-color: var(--primary-light); background: var(--primary-bg); }
+    .program-card.selected { border-color: var(--ai); background: var(--ai-bg); }
+    .program-card .pc-name { font-size: 14px; font-weight: 700; color: var(--gray-800); }
+    .program-card .pc-meta { font-size: 12px; color: var(--gray-500); margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .program-card .pc-meta span { display: inline-flex; align-items: center; gap: 4px; }
+    .program-list { max-height: 400px; overflow-y: auto; padding-right: 8px; }
+
+    /* Buttons */
+    .btn { padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all .15s; }
+    .btn-ai { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; }
+    .btn-ai:hover { background: linear-gradient(135deg, #7c3aed, #5b21b6); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(139,92,246,.3); }
+    .btn-ai:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: #4338ca; }
+    .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 6px; }
+    .btn-outline { background: white; border: 1.5px solid var(--gray-200); color: var(--gray-700); }
+    .btn-outline:hover { border-color: var(--ai); color: var(--ai); }
+
+    /* Toggle */
+    .toggle-group { display: flex; gap: 0; border: 2px solid var(--gray-200); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+    .toggle-btn { flex: 1; padding: 10px 16px; border: none; background: white; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--gray-500); transition: all .15s; }
+    .toggle-btn.active { background: var(--ai); color: white; }
+
+    /* SOC Results */
+    .soc-match { padding: 16px; border: 1.5px solid var(--gray-200); border-radius: 10px; margin-bottom: 10px; transition: all .15s; cursor: pointer; }
+    .soc-match:hover { border-color: var(--ai); }
+    .soc-match.selected { border-color: var(--ai); background: var(--ai-bg); }
+    .soc-header { display: flex; align-items: flex-start; gap: 12px; }
+    .soc-rank { width: 32px; height: 32px; border-radius: 50%; background: var(--gray-100); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: var(--gray-500); flex-shrink: 0; }
+    .soc-match.selected .soc-rank { background: var(--ai); color: white; }
+    .soc-info { flex: 1; }
+    .soc-code { font-family: monospace; font-size: 13px; color: var(--ai); font-weight: 700; }
+    .soc-title { font-size: 14px; font-weight: 700; color: var(--gray-800); }
+    .soc-meta { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+    .soc-score { text-align: right; }
+    .soc-score-value { font-size: 18px; font-weight: 800; color: var(--ai); }
+    .soc-score-label { font-size: 11px; color: var(--gray-400); }
+    .soc-reason { font-size: 12px; color: var(--gray-600); margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--gray-200); font-style: italic; }
+    .source-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .source-tag.ai { background: var(--ai-bg); color: var(--ai); }
+    .source-tag.local { background: var(--info-bg); color: var(--info); }
+
+    /* LMI Results */
+    .lmi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .stat-card { padding: 20px; border-radius: 10px; text-align: center; }
+    .stat-card.salary { background: linear-gradient(135deg, #ecfdf5, #d1fae5); }
+    .stat-card.employment { background: linear-gradient(135deg, #e0f2fe, #bae6fd); }
+    .stat-card.growth { background: linear-gradient(135deg, #f5f3ff, #ede9fe); }
+    .stat-card.demand { background: linear-gradient(135deg, #fffbeb, #fef3c7); }
+    .stat-value { font-size: 28px; font-weight: 800; }
+    .stat-label { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-top: 4px; }
+
+    .occ-card { padding: 16px; border: 1px solid var(--gray-200); border-radius: 10px; margin-bottom: 12px; }
+    .occ-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .occ-card .occ-soc { font-family: monospace; font-size: 12px; color: var(--ai); }
+    .occ-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 10px; }
+    .occ-stat { padding: 8px 12px; background: var(--gray-50); border-radius: 6px; }
+    .occ-stat-val { font-size: 16px; font-weight: 800; }
+    .occ-stat-lbl { font-size: 11px; color: var(--gray-500); }
+
+    .skill-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin: 3px; }
+    .skill-chip.hard { background: #dbeafe; color: #1d4ed8; }
+    .skill-chip.soft { background: #fce7f3; color: #be185d; }
+    .skill-chip.cert { background: #fef3c7; color: #92400e; }
+
+    /* Spinner */
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-dark { border-color: rgba(139,92,246,.2); border-top-color: var(--ai); }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-400); }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state h3 { font-size: 18px; color: var(--gray-500); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; max-width: 400px; margin: 0 auto; }
+
+    /* AI indicator */
+    .ai-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .ai-badge.enabled { background: var(--ai-bg); color: var(--ai); }
+    .ai-badge.disabled { background: var(--gray-100); color: var(--gray-400); }
+
+    /* Comparison table */
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .compare-table th { background: var(--gray-50); padding: 10px 12px; text-align: left; font-weight: 700; color: var(--gray-600); border-bottom: 2px solid var(--gray-200); }
+    .compare-table td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); }
+    .compare-table tr:hover td { background: var(--ai-bg); }
+
+    .hidden { display: none !important; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    .mb-16 { margin-bottom: 16px; }
+    .text-sm { font-size: 13px; }
+    .text-muted { color: var(--gray-500); }
+  </style>
+</head>
+<body>
+
+<!-- Login overlay -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-icon">🤖</div>
+    <h2>AI SOC Explorer</h2>
+    <p>AI-powered occupation matching for academic programs</p>
+    <form onsubmit="login(event)">
+      <input type="password" class="login-input" id="codeInput" placeholder="Enter access code" autofocus>
+      <button type="submit" class="login-btn" id="loginBtn">🔓 Unlock Explorer</button>
+    </form>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-icon">🤖</div>
+  <h1>AI SOC Explorer</h1>
+  <div class="header-right">
+    <a href="/" class="nav-link">📊 Dashboard</a>
+    <a href="/advanced.html" class="nav-link">🔬 Advanced</a>
+    <a href="/ai-explorer.html" class="nav-link active">🤖 AI Explorer</a>
+    <span class="badge" id="aiBadge">checking…</span>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step active" id="step1"><div class="step-num">1</div>Select Program</div>
+    <div class="step-arrow">→</div>
+    <div class="step" id="step2"><div class="step-num">2</div>AI Matches SOC Codes</div>
+    <div class="step-arrow">→</div>
+    <div class="step" id="step3"><div class="step-num">3</div>View Labor Market Data</div>
+  </div>
+
+  <!-- STEP 1: Select a program -->
+  <div id="step1Panel">
+    <div class="card">
+      <div class="card-header">
+        <span>📚</span>
+        <h3>Step 1: Select a Program</h3>
+      </div>
+      <div class="card-body">
+        <div class="form-row">
+          <div>
+            <label>School</label>
+            <select id="schoolSelect" onchange="loadPrograms()">
+              <option value="">— Select a school —</option>
+            </select>
+          </div>
+          <div>
+            <label>Search programs</label>
+            <input type="text" id="programSearch" placeholder="Type to filter…" oninput="filterPrograms()">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label>Filter by college</label>
+            <select id="collegeFilter" onchange="filterPrograms()">
+              <option value="">All colleges</option>
+            </select>
+          </div>
+          <div>
+            <label>Filter by degree type</label>
+            <select id="degreeFilter" onchange="filterPrograms()">
+              <option value="">All degrees</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="programListContainer" class="hidden">
+          <div class="flex-between mb-16">
+            <span class="text-sm text-muted" id="programCount">0 programs</span>
+            <span class="text-sm text-muted" id="selectedProgramLabel">No program selected</span>
+          </div>
+          <div class="program-list" id="programList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: AI Match -->
+  <div id="step2Panel" class="hidden">
+    <div class="card">
+      <div class="card-header">
+        <span>🧠</span>
+        <h3>Step 2: AI-Matched SOC Codes</h3>
+        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+          <span class="ai-badge" id="matchSourceBadge"></span>
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- Selected program summary -->
+        <div id="selectedProgramSummary" style="padding:16px;background:var(--ai-bg);border-radius:10px;margin-bottom:16px;"></div>
+
+        <div class="flex-between mb-16">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <label style="margin:0;">Region:</label>
+            <select id="regionSelect" style="width:200px;">
+              <option value="national">🇺🇸 National</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline btn-sm" onclick="goToStep(1)">← Change Program</button>
+            <button class="btn btn-ai btn-sm" onclick="rerunMatch()" id="rerunBtn">🔄 Re-run Match</button>
+          </div>
+        </div>
+
+        <p class="text-sm text-muted mb-16">Select SOC codes to fetch labor market data. Click a card to toggle selection.</p>
+        <div id="socMatchResults"></div>
+
+        <div style="text-align:center;margin-top:20px;">
+          <button class="btn btn-ai" id="fetchLmiBtn" onclick="fetchLMIForSelected()" disabled>
+            📈 Fetch Labor Market Data for Selected
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: LMI Results -->
+  <div id="step3Panel" class="hidden">
+    <div class="card">
+      <div class="card-header">
+        <span>📈</span>
+        <h3>Step 3: Labor Market Intelligence</h3>
+        <div style="margin-left:auto;display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="goToStep(2)">← Back to SOC Matches</button>
+          <button class="btn btn-outline btn-sm" onclick="goToStep(1)">🔄 New Program</button>
+        </div>
+      </div>
+      <div class="card-body" id="lmiResults"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Auth ──────────────────────────────────────────────────
+function getToken() { return sessionStorage.getItem('access_token') }
+
+async function authFetch(url, opts = {}) {
+  const token = getToken()
+  if (!opts.headers) opts.headers = {}
+  opts.headers['X-Access-Token'] = token
+  if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+    opts.body = JSON.stringify(opts.body)
+    opts.headers['Content-Type'] = 'application/json'
+  }
+  const res = await fetch(url, opts)
+  if (res.status === 401) { sessionStorage.removeItem('access_token'); location.reload(); return }
+  return res
+}
+
+async function login(e) {
+  e.preventDefault()
+  const code = document.getElementById('codeInput').value.trim()
+  const btn = document.getElementById('loginBtn')
+  const err = document.getElementById('loginError')
+  if (!code) { err.textContent = 'Please enter an access code'; err.style.display = 'block'; return }
+  btn.innerHTML = '<span class="spinner"></span>'
+  btn.disabled = true
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ code })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error)
+    sessionStorage.setItem('access_token', data.token)
+    document.getElementById('loginOverlay').classList.add('hidden')
+    init()
+  } catch(e) {
+    err.textContent = e.message || 'Invalid access code'
+    err.style.display = 'block'
+    btn.textContent = '🔓 Unlock Explorer'
+    btn.disabled = false
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('access_token')
+  location.reload()
+}
+
+// ─── State ─────────────────────────────────────────────────
+let allPrograms = []
+let filteredPrograms = []
+let selectedProgram = null
+let socMatches = []
+let selectedSocCodes = new Set()
+let aiAvailable = false
+let regions = []
+
+// ─── Init ──────────────────────────────────────────────────
+async function checkAuth() {
+  const token = getToken()
+  if (!token) return false
+  const res = await fetch('/api/auth/verify', {
+    method: 'POST', headers: { 'X-Access-Token': token }
+  })
+  const data = await res.json()
+  return data.valid
+}
+
+async function init() {
+  const valid = await checkAuth()
+  if (!valid) {
+    document.getElementById('loginOverlay').classList.remove('hidden')
+    return
+  }
+  document.getElementById('loginOverlay').classList.add('hidden')
+  // Load schools
+  const res = await authFetch('/api/schools')
+  const schools = await res.json()
+  const sel = document.getElementById('schoolSelect')
+  sel.innerHTML = '<option value="">— Select a school —</option>'
+  schools.forEach(s => {
+    sel.innerHTML += `<option value="${s.id}">${s.label}</option>`
+  })
+  // Load regions
+  try {
+    const rr = await authFetch('/api/lmi/regions')
+    const rData = await rr.json()
+    regions = rData.data || []
+    const rSel = document.getElementById('regionSelect')
+    rSel.innerHTML = '<option value="national">🇺🇸 National</option>'
+    const states = regions.filter(r => r.type === 'state').sort((a,b) => a.name.localeCompare(b.name))
+    states.forEach(s => { rSel.innerHTML += `<option value="${s.code}">${s.name}</option>` })
+  } catch(e) {}
+  // Check AI
+  updateAIBadge()
+}
+
+function updateAIBadge() {
+  // We'll know after the first match call if AI is available
+  const badge = document.getElementById('aiBadge')
+  badge.textContent = '🤖 AI ready'
+  badge.className = 'badge'
+}
+
+// ─── Programs ──────────────────────────────────────────────
+async function loadPrograms() {
+  const schoolId = document.getElementById('schoolSelect').value
+  if (!schoolId) { document.getElementById('programListContainer').classList.add('hidden'); return }
+
+  const [progRes, filterRes] = await Promise.all([
+    authFetch(`/api/schools/${schoolId}/programs`),
+    authFetch(`/api/schools/${schoolId}/filters`)
+  ])
+  const progData = await progRes.json()
+  const filterData = await filterRes.json()
+
+  allPrograms = progData.programs || []
+  filteredPrograms = [...allPrograms]
+
+  // Populate filters
+  const cSel = document.getElementById('collegeFilter')
+  cSel.innerHTML = '<option value="">All colleges</option>'
+  ;(filterData.colleges || []).forEach(c => { cSel.innerHTML += `<option value="${c}">${c}</option>` })
+
+  const dSel = document.getElementById('degreeFilter')
+  dSel.innerHTML = '<option value="">All degrees</option>'
+  ;(filterData.degreeDesignations || []).forEach(d => { dSel.innerHTML += `<option value="${d}">${d}</option>` })
+
+  document.getElementById('programListContainer').classList.remove('hidden')
+  renderPrograms()
+}
+
+function filterPrograms() {
+  const search = document.getElementById('programSearch').value.toLowerCase()
+  const college = document.getElementById('collegeFilter').value
+  const degree = document.getElementById('degreeFilter').value
+
+  filteredPrograms = allPrograms.filter(p => {
+    const text = `${p.name} ${p.longName} ${p.code} ${p.cipCode}`.toLowerCase()
+    if (search && !text.includes(search)) return false
+    if (college && p.college !== college) return false
+    if (degree && p.degreeDesignation !== degree) return false
+    return true
+  })
+  renderPrograms()
+}
+
+function renderPrograms() {
+  const container = document.getElementById('programList')
+  document.getElementById('programCount').textContent = `${filteredPrograms.length} programs`
+
+  if (!filteredPrograms.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><h3>No programs found</h3><p>Try a different filter.</p></div>'
+    return
+  }
+
+  container.innerHTML = filteredPrograms.map((p, i) => `
+    <div class="program-card ${selectedProgram && selectedProgram.code === p.code ? 'selected' : ''}"
+         onclick="selectProgram(${i})">
+      <div class="pc-name">${p.longName || p.name}</div>
+      <div class="pc-meta">
+        <span>🏷️ ${p.code || '—'}</span>
+        <span>📋 CIP: ${p.cipCode || '—'}</span>
+        ${p.degreeDesignation ? `<span>🎓 ${p.degreeDesignation}</span>` : ''}
+        ${p.college ? `<span>🏛️ ${p.college}</span>` : ''}
+        ${p.type ? `<span>📁 ${p.type}</span>` : ''}
+      </div>
+    </div>
+  `).join('')
+}
+
+async function selectProgram(index) {
+  selectedProgram = filteredPrograms[index]
+  renderPrograms()
+  document.getElementById('selectedProgramLabel').innerHTML =
+    `✅ <strong>${selectedProgram.longName || selectedProgram.name}</strong>`
+
+  // Auto-run SOC matching
+  await runSOCMatch()
+}
+
+// ─── SOC Matching ──────────────────────────────────────────
+async function runSOCMatch() {
+  if (!selectedProgram) return
+
+  goToStep(2)
+
+  // Update summary
+  document.getElementById('selectedProgramSummary').innerHTML = `
+    <div style="display:flex;gap:16px;align-items:flex-start;">
+      <div style="font-size:28px;">📚</div>
+      <div style="flex:1;">
+        <div style="font-size:16px;font-weight:800;color:var(--gray-900);">${selectedProgram.longName || selectedProgram.name}</div>
+        <div style="font-size:13px;color:var(--gray-500);margin-top:4px;">
+          Code: ${selectedProgram.code || '—'} &nbsp;|&nbsp;
+          CIP: ${selectedProgram.cipCode || '—'} &nbsp;|&nbsp;
+          ${selectedProgram.degreeDesignation || ''} &nbsp;|&nbsp;
+          ${selectedProgram.college || ''}
+        </div>
+      </div>
+    </div>
+  `
+
+  const container = document.getElementById('socMatchResults')
+  container.innerHTML = `<div style="text-align:center;padding:40px;">
+    <div class="spinner-dark" style="width:32px;height:32px;border-width:4px;margin:0 auto 16px;"></div>
+    <p style="font-size:14px;color:var(--gray-500);">AI is analyzing the program and matching SOC codes…</p>
+  </div>`
+
+  try {
+    const res = await authFetch('/api/soc/match', {
+      method: 'POST',
+      body: { program: selectedProgram, topN: 10, useAI: true }
+    })
+    const data = await res.json()
+
+    aiAvailable = data.aiAvailable
+    const badge = document.getElementById('matchSourceBadge')
+    if (data.aiMatches && data.aiMatches.length) {
+      socMatches = data.aiMatches.map((m, i) => ({ ...m, source: 'ai', rank: i + 1 }))
+      badge.innerHTML = '🤖 AI Powered'
+      badge.className = 'ai-badge enabled'
+    } else {
+      socMatches = data.localMatches.map((m, i) => ({ ...m, source: 'local', rank: i + 1 }))
+      badge.innerHTML = '🔍 Local Matching'
+      badge.className = 'ai-badge disabled'
+    }
+
+    // Auto-select top 5
+    selectedSocCodes.clear()
+    socMatches.slice(0, 5).forEach(m => selectedSocCodes.add(m.code))
+
+    renderSOCMatches()
+    updateFetchButton()
+
+    // Update AI badge in header
+    const hBadge = document.getElementById('aiBadge')
+    hBadge.textContent = aiAvailable ? '🤖 AI enabled' : '🔍 Local only'
+
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>
+      <h3>Matching Failed</h3><p>${err.message}</p></div>`
+  }
+}
+
+function renderSOCMatches() {
+  const container = document.getElementById('socMatchResults')
+
+  if (!socMatches.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🤷</div>
+      <h3>No Matches Found</h3><p>The AI couldn't find relevant SOC codes for this program.</p></div>`
+    return
+  }
+
+  container.innerHTML = socMatches.map((m, i) => {
+    const isSelected = selectedSocCodes.has(m.code)
+    return `
+    <div class="soc-match ${isSelected ? 'selected' : ''}" onclick="toggleSOC('${m.code}')">
+      <div class="soc-header">
+        <div class="soc-rank">${m.rank}</div>
+        <div class="soc-info">
+          <div class="soc-code">${m.code}</div>
+          <div class="soc-title">${m.title}</div>
+          <div class="soc-meta">
+            ${m.majorGroup ? `<span>${m.majorGroup}</span>` : ''}
+            ${m.minorGroup ? ` › ${m.minorGroup}` : ''}
+          </div>
+        </div>
+        <div class="soc-score">
+          ${m.source === 'ai'
+            ? `<span class="source-tag ai">AI</span>`
+            : `<div class="soc-score-value">${m.relevanceScore || '—'}</div><div class="soc-score-label">score</div>`
+          }
+          ${m.verified === false ? '<div style="font-size:10px;color:var(--warning);margin-top:4px;">⚠️ unverified code</div>' : ''}
+        </div>
+      </div>
+      ${m.reason ? `<div class="soc-reason">💡 ${m.reason}</div>` : ''}
+    </div>`
+  }).join('')
+}
+
+function toggleSOC(code) {
+  if (selectedSocCodes.has(code)) {
+    selectedSocCodes.delete(code)
+  } else {
+    selectedSocCodes.add(code)
+  }
+  renderSOCMatches()
+  updateFetchButton()
+}
+
+function updateFetchButton() {
+  const btn = document.getElementById('fetchLmiBtn')
+  const n = selectedSocCodes.size
+  btn.disabled = n === 0
+  btn.textContent = n > 0
+    ? `📈 Fetch Labor Market Data (${n} SOC code${n > 1 ? 's' : ''})`
+    : '📈 Select SOC codes first'
+}
+
+async function rerunMatch() {
+  await runSOCMatch()
+}
+
+// ─── LMI Fetch ─────────────────────────────────────────────
+async function fetchLMIForSelected() {
+  if (!selectedSocCodes.size) return
+
+  goToStep(3)
+
+  const container = document.getElementById('lmiResults')
+  container.innerHTML = `<div style="text-align:center;padding:40px;">
+    <div class="spinner-dark" style="width:32px;height:32px;border-width:4px;margin:0 auto 16px;"></div>
+    <p style="font-size:14px;color:var(--gray-500);">Fetching labor market intelligence from Mapademics…</p>
+  </div>`
+
+  const regionVal = document.getElementById('regionSelect').value
+  const regionType = regionVal === 'national' ? 'national' : 'state'
+  const region = regionVal === 'national' ? undefined : regionVal
+
+  try {
+    const res = await authFetch('/api/lmi/by-soc', {
+      method: 'POST',
+      body: {
+        socCodes: [...selectedSocCodes],
+        regionType,
+        region,
+        includeSkills: true
+      }
+    })
+    const data = await res.json()
+    renderLMIResults(data)
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>
+      <h3>Failed to fetch LMI</h3><p>${err.message}</p></div>`
+  }
+}
+
+function renderLMIResults(data) {
+  const container = document.getElementById('lmiResults')
+  const occupations = data.data?.matchedOccupations || []
+  const warnings = data.data?.warnings || []
+
+  if (!occupations.length && warnings.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <h3>No LMI Data Available</h3>
+        <p>The sandbox only supports limited SOC codes. Try different matches or a different program.</p>
+        <div style="margin-top:16px;text-align:left;max-width:500px;margin-left:auto;margin-right:auto;">
+          ${warnings.map(w => `<div style="padding:8px 12px;background:var(--warning-bg);border-radius:8px;font-size:12px;color:var(--warning);margin-bottom:6px;">⚠️ ${w.message || JSON.stringify(w)}</div>`).join('')}
+        </div>
+        <button class="btn btn-outline" style="margin-top:16px;" onclick="goToStep(2)">← Back to SOC Matches</button>
+      </div>`
+    return
+  }
+
+  // Aggregate stats using actual Mapademics response structure
+  let totalEmployment = 0
+  let salarySum = 0
+  let salaryCount = 0
+  let allSkills = { core: new Set(), relevant: new Set(), transferable: new Set() }
+
+  occupations.forEach(occ => {
+    const lmd = occ.laborMarketData
+    if (lmd?.totalEmployment) totalEmployment += lmd.totalEmployment
+    if (lmd?.medianAnnualSalary) { salarySum += lmd.medianAnnualSalary; salaryCount++ }
+    const sk = occ.skillRequirements
+    if (sk) {
+      (sk.coreSkills || []).forEach(s => allSkills.core.add(s.mslSkillName || s.name || s))
+      ;(sk.relevantSkills || []).forEach(s => allSkills.relevant.add(s.mslSkillName || s.name || s))
+      ;(sk.transferableSkills || []).forEach(s => allSkills.transferable.add(s.mslSkillName || s.name || s))
+    }
+  })
+
+  const avgSalary = salaryCount ? Math.round(salarySum / salaryCount) : null
+
+  let html = `
+    <div style="padding:16px;background:var(--ai-bg);border-radius:10px;margin-bottom:20px;">
+      <strong>Program:</strong> ${selectedProgram.longName || selectedProgram.name}
+      &nbsp;|&nbsp; <strong>SOC Codes queried:</strong> ${[...selectedSocCodes].join(', ')}
+      &nbsp;|&nbsp; <strong>Occupations found:</strong> ${occupations.length}
+      ${warnings.length ? `&nbsp;|&nbsp; <span style="color:var(--warning);">⚠️ ${warnings.length} warning(s)</span>` : ''}
+    </div>
+  `
+
+  // Warnings
+  if (warnings.length) {
+    html += `<div style="margin-bottom:16px;">`
+    warnings.forEach(w => {
+      html += `<div style="padding:8px 12px;background:var(--warning-bg);border-radius:8px;font-size:12px;color:var(--warning);margin-bottom:4px;">⚠️ ${w.message}</div>`
+    })
+    html += `</div>`
+  }
+
+  // Overview stats
+  html += `<div class="lmi-grid">`
+  if (avgSalary) html += `<div class="stat-card salary"><div class="stat-value" style="color:var(--success);">$${avgSalary.toLocaleString()}</div><div class="stat-label">Avg Median Salary</div></div>`
+  html += `<div class="stat-card employment"><div class="stat-value" style="color:var(--info);">${totalEmployment.toLocaleString()}</div><div class="stat-label">Total Employment</div></div>`
+  html += `<div class="stat-card growth"><div class="stat-value" style="color:var(--ai);">${occupations.length}</div><div class="stat-label">Matched Occupations</div></div>`
+
+  const demandScores = occupations.filter(o => o.laborMarketData?.demand?.score != null).map(o => o.laborMarketData.demand.score)
+  if (demandScores.length) {
+    const avgDemand = (demandScores.reduce((a,b)=>a+b,0) / demandScores.length).toFixed(1)
+    html += `<div class="stat-card demand"><div class="stat-value" style="color:var(--warning);">${avgDemand}</div><div class="stat-label">Avg Demand Score</div></div>`
+  }
+  html += `</div>`
+
+  // Comparison table
+  html += `
+    <h3 style="margin:24px 0 12px;font-size:16px;">📊 Occupation Comparison</h3>
+    <div style="overflow-x:auto;">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>SOC Code</th>
+            <th>Occupation</th>
+            <th>Median Salary</th>
+            <th>Employment</th>
+            <th>Growth</th>
+            <th>Demand</th>
+            <th>Degree Level</th>
+          </tr>
+        </thead>
+        <tbody>
+  `
+  occupations.forEach(occ => {
+    const lmd = occ.laborMarketData || {}
+    const salary = lmd.medianAnnualSalary ? `$${lmd.medianAnnualSalary.toLocaleString()}` : '—'
+    const emp = lmd.totalEmployment?.toLocaleString() || '—'
+    const growth = lmd.forecastedEmploymentGrowth != null ? `${(lmd.forecastedEmploymentGrowth * 100).toFixed(1)}%` : '—'
+    const demand = lmd.demand ? `${lmd.demand.score}/3` : '—'
+    const degree = lmd.typicalDegreeLevel || '—'
+    html += `<tr>
+      <td><code style="color:var(--ai);font-weight:700;">${occ.socCode}</code></td>
+      <td><strong>${occ.name || '—'}</strong></td>
+      <td style="font-weight:700;color:var(--success);">${salary}</td>
+      <td>${emp}</td>
+      <td>${growth}</td>
+      <td>${demand}</td>
+      <td>${degree}</td>
+    </tr>`
+  })
+  html += `</tbody></table></div>`
+
+  // Detailed cards
+  html += `<h3 style="margin:24px 0 12px;font-size:16px;">📋 Detailed Occupation Cards</h3>`
+  occupations.forEach(occ => {
+    const lmd = occ.laborMarketData || {}
+    html += `<div class="occ-card">
+      <h4>${occ.name || occ.socCode} <span class="occ-soc">(${occ.socCode})</span></h4>
+      ${occ.description ? `<p style="font-size:13px;color:var(--gray-500);margin-bottom:10px;">${occ.description}</p>` : ''}
+      ${occ.alternativeTitles?.length ? `<div style="margin-bottom:10px;font-size:12px;color:var(--gray-500);">Also known as: ${occ.alternativeTitles.join(', ')}</div>` : ''}
+      <div class="occ-stats">`
+
+    if (lmd.medianAnnualSalary) html += `<div class="occ-stat"><div class="occ-stat-val" style="color:var(--success);">$${lmd.medianAnnualSalary.toLocaleString()}</div><div class="occ-stat-lbl">Median Annual Salary</div></div>`
+    if (lmd.totalEmployment) html += `<div class="occ-stat"><div class="occ-stat-val">${lmd.totalEmployment.toLocaleString()}</div><div class="occ-stat-lbl">Total Employment</div></div>`
+    if (lmd.forecastedEmploymentGrowth != null) html += `<div class="occ-stat"><div class="occ-stat-val">${(lmd.forecastedEmploymentGrowth * 100).toFixed(1)}%</div><div class="occ-stat-lbl">Forecasted Growth</div></div>`
+    if (lmd.averageAnnualOpenings != null) html += `<div class="occ-stat"><div class="occ-stat-val">${(lmd.averageAnnualOpenings * 100).toFixed(1)}%</div><div class="occ-stat-lbl">Avg Annual Openings</div></div>`
+    if (lmd.typicalDegreeLevel) html += `<div class="occ-stat"><div class="occ-stat-val">${lmd.typicalDegreeLevel}</div><div class="occ-stat-lbl">Typical Degree</div></div>`
+    if (lmd.typicalWorkExperience) html += `<div class="occ-stat"><div class="occ-stat-val">${lmd.typicalWorkExperience}</div><div class="occ-stat-lbl">Work Experience Needed</div></div>`
+
+    // Demand
+    if (lmd.demand) {
+      const d = lmd.demand
+      const demandColor = d.score >= 2 ? 'var(--success)' : (d.score >= 1 ? 'var(--warning)' : 'var(--gray-500)')
+      html += `<div class="occ-stat"><div class="occ-stat-val" style="color:${demandColor};">${d.score}/3</div><div class="occ-stat-lbl">Demand Score</div></div>`
+      if (d.growthPercentile) html += `<div class="occ-stat"><div class="occ-stat-val">${d.growthPercentile}th</div><div class="occ-stat-lbl">Growth Percentile</div></div>`
+      if (d.openingsPercentile) html += `<div class="occ-stat"><div class="occ-stat-val">${d.openingsPercentile}th</div><div class="occ-stat-lbl">Openings Percentile</div></div>`
+    }
+
+    html += `</div>` // close occ-stats
+
+    // Demand factors
+    if (lmd.demand?.factors?.length) {
+      html += `<div style="margin-top:10px;">
+        <strong style="font-size:12px;color:var(--gray-600);">Demand Factors:</strong>
+        ${lmd.demand.factors.map(f => `<span style="display:inline-block;padding:3px 10px;margin:3px;border-radius:12px;font-size:11px;font-weight:600;background:var(--success-bg);color:var(--success);">🔥 ${f}</span>`).join('')}
+      </div>`
+    }
+
+    // Skills
+    const sk = occ.skillRequirements
+    if (sk) {
+      html += `<div style="margin-top:12px;">`
+      if (sk.coreSkills?.length) {
+        html += `<div style="margin-bottom:8px;"><strong style="font-size:12px;color:var(--gray-600);">Core Skills:</strong><br>`
+        sk.coreSkills.forEach(s => {
+          html += `<span class="skill-chip hard" title="${s.mslSkillDescription || ''}">${s.mslSkillName || s.name}</span>`
+        })
+        html += `</div>`
+      }
+      if (sk.relevantSkills?.length) {
+        html += `<div style="margin-bottom:8px;"><strong style="font-size:12px;color:var(--gray-600);">Relevant Skills:</strong><br>`
+        sk.relevantSkills.forEach(s => {
+          html += `<span class="skill-chip soft" title="${s.mslSkillDescription || ''}">${s.mslSkillName || s.name}</span>`
+        })
+        html += `</div>`
+      }
+      if (sk.transferableSkills?.length) {
+        html += `<div><strong style="font-size:12px;color:var(--gray-600);">Transferable Skills:</strong><br>`
+        sk.transferableSkills.forEach(s => {
+          html += `<span class="skill-chip cert" title="${s.mslSkillDescription || ''}">${s.mslSkillName || s.name}</span>`
+        })
+        html += `</div>`
+      }
+      html += `</div>`
+    }
+    html += `</div>` // close occ-card
+  })
+
+  // All skills summary
+  if (allSkills.core.size || allSkills.relevant.size || allSkills.transferable.size) {
+    html += `<h3 style="margin:24px 0 12px;font-size:16px;">🎯 All Skills Across Matched Occupations</h3>
+      <div class="card" style="margin-bottom:0;"><div class="card-body">`
+    if (allSkills.core.size) {
+      html += `<div style="margin-bottom:12px;"><strong>Core Skills (${allSkills.core.size}):</strong><br>`
+      allSkills.core.forEach(s => { html += `<span class="skill-chip hard">${s}</span>` })
+      html += `</div>`
+    }
+    if (allSkills.relevant.size) {
+      html += `<div style="margin-bottom:12px;"><strong>Relevant Skills (${allSkills.relevant.size}):</strong><br>`
+      allSkills.relevant.forEach(s => { html += `<span class="skill-chip soft">${s}</span>` })
+      html += `</div>`
+    }
+    if (allSkills.transferable.size) {
+      html += `<div><strong>Transferable Skills (${allSkills.transferable.size}):</strong><br>`
+      allSkills.transferable.forEach(s => { html += `<span class="skill-chip cert">${s}</span>` })
+      html += `</div>`
+    }
+    html += `</div></div>`
+  }
+
+  // Raw JSON
+  html += `<details style="margin-top:20px;"><summary style="cursor:pointer;font-size:13px;color:var(--gray-500);font-weight:600;">📄 Raw JSON Response</summary>
+    <pre style="margin-top:8px;padding:16px;background:var(--gray-900);color:#e5e7eb;border-radius:8px;font-size:12px;max-height:400px;overflow:auto;">${JSON.stringify(data, null, 2)}</pre></details>`
+
+  container.innerHTML = html
+}
+
+// ─── Step Navigation ───────────────────────────────────────
+function goToStep(n) {
+  document.getElementById('step1Panel').classList.toggle('hidden', n !== 1)
+  document.getElementById('step2Panel').classList.toggle('hidden', n !== 2)
+  document.getElementById('step3Panel').classList.toggle('hidden', n !== 3)
+
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById(`step${i}`)
+    el.className = i < n ? 'step done' : (i === n ? 'step active' : 'step')
+  }
+}
+
+// ─── Start ─────────────────────────────────────────────────
+init()
+</script>
+</body>
+</html>
